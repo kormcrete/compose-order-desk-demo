@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.compose.multiplatform)
+    // Development runs that reload the UI on save (on the JetBrains Runtime 21); the packaged app is unaffected.
+    alias(libs.plugins.compose.hot.reload)
 }
 
 kotlin {

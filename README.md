@@ -64,9 +64,15 @@ downloads them.
 
 - **Desktop:** `./gradlew :desktopApp:run`, or `./gradlew :desktopApp:runRelease` for the shrunk release build.
   Narrow the window below 840 px for the phone layout. ⌘N (Ctrl+N) starts a new order, Esc closes a dialog.
+- **Desktop with hot reload,** for working on the UI: in IntelliJ IDEA with the Kotlin Multiplatform plugin, open
+  `desktopApp/…/Main.kt` and choose **Run 'desktopApp' with Compose Hot Reload** from the gutter; or
+  `./gradlew :desktopApp:hotRun --mainClass io.github.kormcrete.orderdesk.desktop.MainKt --auto`. Saving a file
+  reloads the running app. It runs on the JetBrains Runtime 21, downloaded when needed.
 - **Android:** start an emulator or connect a phone, then `./gradlew :androidApp:installDebug`; or open the project in
   Android Studio and run **androidApp**.
-- **iPhone and iPad** (on a Mac with Xcode):
+- **In IntelliJ IDEA** with the Kotlin Multiplatform plugin (on a Mac): after `cd iosApp && xcodegen` once, the run
+  configurations cover all three; pick **iosApp** and a simulator, **androidApp** and an emulator, or the desktop app.
+- **iPhone and iPad** in Xcode (on a Mac):
 
   ```bash
   brew install xcodegen
