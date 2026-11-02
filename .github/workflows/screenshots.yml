@@ -62,13 +62,17 @@ jobs:
             macOS)   launcher="$app/Contents/MacOS/Order Desk"; os=macos ;;
             Windows) launcher="$app/Order Desk.exe"; os=windows; out=$(cygpath -m "$out") ;;
             *)       launcher="$app/bin/Order Desk"; os=linux
-                     sudo apt-get install -y -qq xvfb > /dev/null ;;
+                     # Openbox: a window manager, so the Linux window has a title bar like on a desktop.
+                     sudo apt-get install -y -qq xvfb openbox > /dev/null ;;
           esac
           if command -v timeout > /dev/null; then limit() { timeout "$@"; }; else limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }; fi
           for scene in $SCENES; do
             export JAVA_TOOL_OPTIONS="\"-Dorderdesk.scene=$scene\" \"-Dorderdesk.screenshot=$out/$os-$scene.png\""
             if [ "$os" = linux ]; then
-              limit 90 xvfb-run -a -s "-screen 0 1600x1000x24" "$launcher" || true
+              limit 90 xvfb-run -a -s "-screen 0 1600x1000x24" sh -c 'openbox & sleep 1; exec "$0"' "$launcher" > "app-$scene.log" 2>&1 || true
+            elif [ "$os" = macos ]; then
+              # Started the way Finder starts apps; the bare launcher exits at once in the runner's session.
+              limit 90 open -n -W --env "JAVA_TOOL_OPTIONS=$JAVA_TOOL_OPTIONS" --stdout "$PWD/app-$scene.log" --stderr "$PWD/app-$scene.log" "$app" || echo "app exit code $?" >> "app-$scene.log"
             else
               limit 90 "$launcher" > "app-$scene.log" 2>&1 || echo "app exit code $?" >> "app-$scene.log"
             fi

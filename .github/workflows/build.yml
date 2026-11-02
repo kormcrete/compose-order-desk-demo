@@ -84,6 +84,9 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             sudo apt-get install -y -qq xvfb > /dev/null
             limit 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$launcher" || true
+          elif [ "$RUNNER_OS" = macOS ]; then
+            # Started the way Finder starts apps; the bare launcher exits at once in the runner's session.
+            limit 120 open -n -W --env "JAVA_TOOL_OPTIONS=$JAVA_TOOL_OPTIONS" --stdout "$PWD/app.log" --stderr "$PWD/app.log" "$app" || echo "app exit code $?" >> app.log
           else
             limit 120 "$launcher" > app.log 2>&1 || echo "app exit code $?" >> app.log
           fi

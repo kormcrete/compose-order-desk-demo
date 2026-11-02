@@ -1,6 +1,9 @@
 package io.github.kormcrete.orderdesk.ui
 
 import androidx.compose.foundation.background
+import io.github.kormcrete.lagoon.compose.LagoonChip
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,18 +65,26 @@ import io.github.kormcrete.orderdesk.model.Category
 import io.github.kormcrete.orderdesk.model.Order
 import io.github.kormcrete.orderdesk.model.Pricing
 
+/** Below this width the desktop layout tightens: narrower panels, two-line cells, categories as chips. */
+private val COMPACT_BELOW = 1180.dp
+
+/** True in a desktop window narrower than [COMPACT_BELOW]: small screens, high scaling, half-screen windows. */
+private val LocalCompact = compositionLocalOf { false }
+
 /** The desktop layout: sidebar, then the orders workspace or a draft's workspace; checkout as a dialog. */
 @Composable
 fun DesktopLayout(state: OrderDeskState) {
     state.revision
-    Box(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxSize()) {
-            Sidebar(state)
-            val draft = state.activeDraft
-            if (draft != null) DraftWorkspace(state, draft) else OrdersWorkspace(state)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalCompact provides (maxWidth < COMPACT_BELOW)) {
+            Row(Modifier.fillMaxSize()) {
+                Sidebar(state)
+                val draft = state.activeDraft
+                if (draft != null) DraftWorkspace(state, draft) else OrdersWorkspace(state)
+            }
+            if (state.pickingCustomer) CustomerPickerDialog(state)
+            state.checkout?.let { CheckoutDialog(state, it) }
         }
-        if (state.pickingCustomer) CustomerPickerDialog(state)
-        state.checkout?.let { CheckoutDialog(state, it) }
     }
 }
 
@@ -83,7 +94,7 @@ fun DesktopLayout(state: OrderDeskState) {
 private fun Sidebar(state: OrderDeskState) {
     val c = Lagoon.colors
     Column(
-        Modifier.width(232.dp).fillMaxHeight().background(c.surface).padding(horizontal = 12.dp, vertical = 16.dp),
+        Modifier.width(if (LocalCompact.current) 200.dp else 232.dp).fillMaxHeight().background(c.surface).padding(horizontal = 12.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(Modifier.padding(start = 6.dp, top = 4.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -142,19 +153,35 @@ private fun RowScope.OrdersWorkspace(state: OrderDeskState) {
     val c = Lagoon.colors
     val orders = state.visibleOrders()
     val selected = orders.firstOrNull { it.number == state.selected } ?: orders.firstOrNull()
-    Column(Modifier.weight(1f).fillMaxHeight().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Orders", style = Lagoon.type.title)
-                Text("${state.store.orders.openCount} open · ${state.store.orders.openTotal.format()} to ship", style = Lagoon.type.small, color = c.inkMuted)
+    val compact = LocalCompact.current
+    Column(Modifier.weight(1f).fillMaxHeight().padding(if (compact) 20.dp else 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        val title = @Composable {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Orders", style = Lagoon.type.title, maxLines = 1, softWrap = false)
+                Text(
+                    "${state.store.orders.openCount} open · ${state.store.orders.openTotal.format()} to ship",
+                    style = Lagoon.type.small, color = c.inkMuted, maxLines = 1, softWrap = false,
+                )
             }
-            LagoonSearchField(state.query, { state.query = it }, "Search orders or customers", Modifier.width(280.dp))
-            StatusFilter(state)
+        }
+        if (compact) {
+            // Title on its own row, search and filter under it.
+            title()
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                LagoonSearchField(state.query, { state.query = it }, "Search orders or customers", Modifier.weight(1f))
+                StatusFilter(state)
+            }
+        } else {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Box(Modifier.weight(1f)) { title() }
+                LagoonSearchField(state.query, { state.query = it }, "Search orders or customers", Modifier.width(280.dp))
+                StatusFilter(state)
+            }
         }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             OrdersTable(state, orders, selected, Modifier.weight(1f).fillMaxHeight())
             if (selected != null) {
-                Column(Modifier.width(380.dp).fillMaxHeight()) {
+                Column(Modifier.width(if (compact) 320.dp else 380.dp).fillMaxHeight()) {
                     OrderSummary(selected, Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 12.dp), dense = true)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LagoonButton("Save receipt", { state.receipt = selected }, Modifier.weight(1f), style = LagoonButtonStyle.Tonal, icon = LagoonIcons.Receipt)
@@ -173,8 +200,10 @@ private val ORDER_COLUMNS: List<Pair<String, Dp?>> = listOf(
 @Composable
 private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Order?, modifier: Modifier) {
     val c = Lagoon.colors
+    val compact = LocalCompact.current
     LagoonCard(modifier) {
-        TableHeader(ORDER_COLUMNS, endAligned = setOf("Items", "Total"))
+        if (compact) TableHeader(listOf("Order" to null, "Total" to 92.dp, "Status" to 112.dp), endAligned = setOf("Total"))
+        else TableHeader(ORDER_COLUMNS, endAligned = setOf("Items", "Total"))
         LazyColumn(Modifier.weight(1f)) {
             items(orders, key = { it.number }) { order ->
                 Row(
@@ -184,6 +213,22 @@ private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Or
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    if (compact) {
+                        // Customer, then number · date · items under it.
+                        Row(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            AvatarTile(order.customer.initials, key = order.customer.name, size = 32.dp)
+                            Column {
+                                Text(order.customer.name, style = Lagoon.type.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    "${order.number} · ${order.date.formatShort()} · ${order.units} items",
+                                    style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted, maxLines = 1,
+                                )
+                            }
+                        }
+                        Cell(92.dp, end = true) { Text(order.totals.total.format(), style = Lagoon.type.bodyStrong) }
+                        Cell(112.dp) { StatusPill(order.status.label, order.status.tone()) }
+                        return@Row
+                    }
                     Cell(96.dp) { Text(order.number, style = Lagoon.type.bodyStrong) }
                     Cell(72.dp) { Text(order.date.formatShort(), style = Lagoon.type.body, color = c.inkMuted) }
                     Row(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -228,7 +273,8 @@ private fun Cell(width: Dp, end: Boolean = false, content: @Composable () -> Uni
 @Composable
 private fun RowScope.DraftWorkspace(state: OrderDeskState, draft: Draft) {
     val c = Lagoon.colors
-    Column(Modifier.weight(1f).fillMaxHeight().padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    val compact = LocalCompact.current
+    Column(Modifier.weight(1f).fillMaxHeight().padding(start = if (compact) 20.dp else 24.dp, end = if (compact) 20.dp else 24.dp, top = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         LagoonCard(padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 AvatarTile(draft.customer.initials, key = draft.customer.name)
@@ -244,9 +290,28 @@ private fun RowScope.DraftWorkspace(state: OrderDeskState, draft: Draft) {
             }
         }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            CategoryTree(state.store.catalog.root, draft.category, { draft.category = it }, Modifier.width(180.dp))
-            ProductsTable(state, draft, Modifier.weight(1f).fillMaxHeight())
-            CartPanel(state, draft, Modifier.width(320.dp).fillMaxHeight())
+            if (compact) {
+                // Categories as chips above the products: the tree's column goes to the table.
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CategoryChipsRow(state.store.catalog.root, draft.category) { draft.category = it }
+                    ProductsTable(state, draft, Modifier.weight(1f).fillMaxWidth())
+                }
+                CartPanel(state, draft, Modifier.width(300.dp).fillMaxHeight())
+            } else {
+                CategoryTree(state.store.catalog.root, draft.category, { draft.category = it }, Modifier.width(180.dp))
+                ProductsTable(state, draft, Modifier.weight(1f).fillMaxHeight())
+                CartPanel(state, draft, Modifier.width(320.dp).fillMaxHeight())
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryChipsRow(root: Category, selected: Category, onSelect: (Category) -> Unit) {
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LagoonChip("All", selected === root, { onSelect(root) })
+        root.children.forEach { top ->
+            LagoonChip(top.label, selected === top || (selected in top && selected !== root), { onSelect(top) }, icon = top.icon())
         }
     }
 }
@@ -292,7 +357,9 @@ private fun ProductsTable(state: OrderDeskState, draft: Draft, modifier: Modifie
             Text("${products.size} products", style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted)
         }
         LagoonDivider()
-        TableHeader(listOf("Product" to null, "Price" to 76.dp, "Stock" to 84.dp, "" to 100.dp), endAligned = setOf("Price", "Stock"))
+        val compact = LocalCompact.current
+        if (compact) TableHeader(listOf("Product" to null, "Price" to 76.dp, "" to 100.dp), endAligned = setOf("Price"))
+        else TableHeader(listOf("Product" to null, "Price" to 76.dp, "Stock" to 84.dp, "" to 100.dp), endAligned = setOf("Price", "Stock"))
         LazyColumn(Modifier.weight(1f)) {
             items(products, key = { it.sku }) { p ->
                 val qty = draft.cart.quantityOf(p)
@@ -303,10 +370,18 @@ private fun ProductsTable(state: OrderDeskState, draft: Draft, modifier: Modifie
                 ) {
                     Column(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 6.dp)) {
                         Text(p.name, style = Lagoon.type.body, color = c.ink.copy(alpha = faded), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(p.sku, style = Lagoon.type.label.copy(fontFamily = FontFamily.Monospace, fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted.copy(alpha = faded))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(p.sku, style = Lagoon.type.label.copy(fontFamily = FontFamily.Monospace, fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted.copy(alpha = faded))
+                            // Compact: the stock goes under the name, next to the SKU.
+                            if (compact) Text(
+                                p.stockText(),
+                                style = if (p.lowStock) Lagoon.type.label else Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight),
+                                color = if (p.lowStock) c.attention else c.inkMuted.copy(alpha = faded),
+                            )
+                        }
                     }
                     Cell(76.dp, end = true) { Text(p.price.format(), style = Lagoon.type.bodyStrong, color = c.ink.copy(alpha = faded)) }
-                    Cell(84.dp, end = true) {
+                    if (!compact) Cell(84.dp, end = true) {
                         Text(
                             when { !p.inStock -> "Sold out"; p.lowStock -> "Only ${p.stock}"; else -> p.stock.toString() },
                             style = if (p.lowStock) Lagoon.type.label else Lagoon.type.small,

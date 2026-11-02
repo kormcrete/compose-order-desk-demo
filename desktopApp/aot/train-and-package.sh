@@ -31,7 +31,8 @@ case "$(uname -s)" in
   Darwin)
     install="/Applications/$name.app"; appdir="$install/Contents/app"; launcher="$install/Contents/MacOS/$name"
     runtime="$install/Contents/runtime/Contents/Home"
-    run() { limit 120 "$@"; } ;;
+    # Started the way Finder starts apps; the bare launcher exits at once in a CI session.
+    run() { limit 120 open -n -W --env "JAVA_TOOL_OPTIONS=$JAVA_TOOL_OPTIONS" --stdout "$out/mac-app.log" --stderr "$out/mac-app.log" "$install"; } ;;
   *)
     install="C:/Program Files/$name"; appdir="$install/app"; launcher="$install/$name.exe"; runtime="$install/runtime"
     out=$(cygpath -m "$out")

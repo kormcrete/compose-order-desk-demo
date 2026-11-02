@@ -23,6 +23,10 @@ object WindowShot {
             window.toFront()
             delay(800)
             val bounds = Rectangle(window.locationOnScreen, window.size)
+            // Windows counts an invisible resize border of 7 px on the left, right and bottom into the window.
+            if (System.getProperty("os.name").lowercase().startsWith("windows")) {
+                bounds.setBounds(bounds.x + 7, bounds.y, bounds.width - 14, bounds.height - 7)
+            }
             // The largest variant is the one in physical pixels on HiDPI displays.
             val shot = Robot().createMultiResolutionScreenCapture(bounds).resolutionVariants
                 .maxBy { it.getWidth(null) * it.getHeight(null) }

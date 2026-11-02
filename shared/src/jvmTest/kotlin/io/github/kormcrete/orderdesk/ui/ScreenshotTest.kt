@@ -68,5 +68,8 @@ class ScreenshotTest {
         desktop("desktop-1-orders", newState().apply { withDraft(this); activeDraft = null; selected = "ORD-1637" })
         desktop("desktop-2-new-order", newState().apply { withDraft(this) })
         desktop("desktop-3-checkout", newState().apply { startCheckout(withDraft(this)); checkout!!.step = 2 })
+        // A small window (1000 wide): the compact desktop layout.
+        shoot("desktop-small-1-orders", newState().apply { selected = "ORD-1637" }, 1000, 700, 1.5f, LagoonMetrics.Desktop)
+        shoot("desktop-small-2-new-order", newState().apply { withDraft(this) }, 1000, 700, 1.5f, LagoonMetrics.Desktop)
     }
 }
