@@ -10,6 +10,11 @@ on:
         description: Branch of the Lagoon theme to build against
         default: compose-theme
 
+# A newer push to the same branch cancels this branch's older runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   # write: the Linux job publishes the rendered screens to the `screenshots` branch.
   contents: write
