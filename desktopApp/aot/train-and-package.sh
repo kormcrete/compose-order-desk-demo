@@ -19,6 +19,8 @@ image=$(find desktopApp/build/compose/binaries/main-release/app -maxdepth 1 -min
 name="Order Desk"
 version=1.0.0
 sudo=""
+# macOS has no `timeout`; perl's alarm does the same everywhere.
+limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 [ "$(id -u 2>/dev/null || echo 0)" != 0 ] && command -v sudo > /dev/null && sudo=sudo
 
 case "$(uname -s)" in
@@ -27,21 +29,21 @@ case "$(uname -s)" in
     appdir="$install/lib/app"
     launcher="$install/bin/$name"
     type=deb
-    run() { timeout 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$@"; }
+    run() { limit 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$@"; }
     ;;
   Darwin)
     install="/Applications/$name.app"
     appdir="$install/Contents/app"
     launcher="$install/Contents/MacOS/$name"
     type=dmg
-    run() { timeout 120 "$@"; }
+    run() { limit 120 "$@"; }
     ;;
   *)
     install="C:/Program Files/$name"
     appdir="$install/app"
     launcher="$install/$name.exe"
     type=none # building an .msi needs the WiX toolset; the trained app is checked where it was trained
-    run() { timeout 120 "$@"; }
+    run() { limit 120 "$@"; }
     ;;
 esac
 cfg="$appdir/$name.cfg"
