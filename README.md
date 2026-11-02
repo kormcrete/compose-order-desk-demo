@@ -34,8 +34,9 @@ each start begins with the same data. The same app as a plain Swing application:
   <img src="docs/linux-new-order.png" alt="A new order on Linux: categories, products and the cart side by side" width="49%">
 </p>
 
-<sub>Android, iPhone, macOS, Windows and Linux, top to bottom: the same two scenes of the same code, taken by CI on an
-emulator, a simulator and the three desktop systems.</sub>
+<sub>Android and iPhone, then macOS, Windows and Linux: the same two scenes of the same code, taken by CI on an
+emulator, a simulator and the three desktop systems. The macOS and Windows machines have small screens (about 1000
+pixels wide), so their windows show the compact desktop layout; Linux shows it at 1280.</sub>
 
 ## One UI, two layouts
 
@@ -44,7 +45,8 @@ The width of the window decides the layout, not the platform:
 - **Narrow** (phones, narrow windows): one screen at a time with a back stack; the cart is a floating bar; checkout is a
   full-screen flow with a step bar.
 - **Wide** (desktop, tablets in landscape): a sidebar with the open drafts, the orders table next to the selected
-  order, categories, products and cart side by side; checkout is a dialog.
+  order, categories, products and cart side by side; checkout is a dialog. Below 1180 px it tightens: two-line order
+  rows, categories as chips, the stock next to the SKU.
 
 The theme decides how it looks, the platform how dense it is: 44 pt touch targets and 15 pt text on phones, 36 px
 controls and 14 px text on desktop.
@@ -137,13 +139,21 @@ uses, shrunk with ProGuard, and starts with:
 | `-XX:TieredStopAtLevel=1`, `-XX:ReservedCodeCacheSize=48m` | Quick JIT only: less compiler memory and fewer threads, plenty for UI code |
 | `-Xss512k` | Smaller thread stacks |
 
-With `-Dorderdesk.probe=<file>` the app walks through its main screens, then writes what it uses and quits. CI runs it
-on the packaged app: the Java heap stays near 10 MB, and the process uses about 220–230 MB resident on Linux, of which
-about 100 MB are shared, file-backed pages (the runtime's modules and Skia's native library).
-
 An AOT cache (JDK 25) makes the start faster: classes are loaded and linked once, in a training run, and stored next
-to the jars. The JVM uses a cache only with the very same jars, so the script trains the app where its installer puts
-it, on the files the installer installs, and adds the cache to that package.
+to the jars. The JVM uses a cache only with the very same jars, so `desktopApp/aot/train-and-package.sh` trains the
+app where its installer puts it, on the files the installer installs, and adds the cache to that package.
+
+With `-Dorderdesk.probe=<file>` the app walks through its main screens, then writes what it uses and quits. CI runs it
+on the installed app with its AOT cache:
+
+| | Classes from the AOT cache | Start to first screen | Memory as the OS shows it | Java heap in use |
+|---|---|---|---|---|
+| Linux | 6,525 of 6,566 | 0.28 s (1.3 s without) | 220 MB resident | 8 MB |
+| macOS | 6,321 of 6,339 | 0.68 s (1.9 s without) | 221 MB resident | 8 MB |
+| Windows | 6,339 of 6,367 | 0.42 s (1.2 s without) | 173 MB working set | 10 MB |
+
+Measured on GitHub's CI machines, with software rendering on Linux. Of the resident memory, about 100 MB are shared,
+file-backed pages (the runtime's modules and Skia's native library) that the system can reclaim.
 
 ## License
 
