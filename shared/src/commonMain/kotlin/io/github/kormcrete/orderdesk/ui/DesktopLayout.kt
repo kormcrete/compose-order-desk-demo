@@ -181,7 +181,7 @@ private fun RowScope.OrdersWorkspace(state: OrderDeskState) {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             OrdersTable(state, orders, selected, Modifier.weight(1f).fillMaxHeight())
             if (selected != null) {
-                Column(Modifier.width(if (compact) 320.dp else 380.dp).fillMaxHeight()) {
+                Column(Modifier.width(if (compact) 320.dp else 360.dp).fillMaxHeight()) {
                     OrderSummary(selected, Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 12.dp), dense = true)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LagoonButton("Save receipt", { state.receipt = selected }, Modifier.weight(1f), style = LagoonButtonStyle.Tonal, icon = LagoonIcons.Receipt)
@@ -194,7 +194,7 @@ private fun RowScope.OrdersWorkspace(state: OrderDeskState) {
 }
 
 private val ORDER_COLUMNS: List<Pair<String, Dp?>> = listOf(
-    "Order" to 96.dp, "Date" to 72.dp, "Customer" to null, "Items" to 56.dp, "Total" to 92.dp, "Status" to 112.dp,
+    "Order" to 96.dp, "Date" to 64.dp, "Customer" to null, "Items" to 52.dp, "Total" to 92.dp, "Status" to 108.dp,
 )
 
 @Composable
@@ -220,7 +220,7 @@ private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Or
                             Column {
                                 Text(order.customer.name, style = Lagoon.type.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
-                                    "${order.number} · ${order.date.formatShort()} · ${order.units} items",
+                                    "${order.number} · ${order.date.formatShort()}",
                                     style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted, maxLines = 1,
                                 )
                             }
@@ -230,14 +230,14 @@ private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Or
                         return@Row
                     }
                     Cell(96.dp) { Text(order.number, style = Lagoon.type.bodyStrong) }
-                    Cell(72.dp) { Text(order.date.formatShort(), style = Lagoon.type.body, color = c.inkMuted) }
+                    Cell(64.dp) { Text(order.date.formatShort(), style = Lagoon.type.body, color = c.inkMuted) }
                     Row(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         AvatarTile(order.customer.initials, key = order.customer.name, size = 28.dp)
                         Text(order.customer.name, style = Lagoon.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Cell(56.dp, end = true) { Text(order.units.toString(), style = Lagoon.type.body, color = c.inkMuted) }
+                    Cell(52.dp, end = true) { Text(order.units.toString(), style = Lagoon.type.body, color = c.inkMuted) }
                     Cell(92.dp, end = true) { Text(order.totals.total.format(), style = Lagoon.type.bodyStrong) }
-                    Cell(112.dp) { StatusPill(order.status.label, order.status.tone()) }
+                    Cell(108.dp) { StatusPill(order.status.label, order.status.tone()) }
                 }
                 LagoonDivider()
             }
