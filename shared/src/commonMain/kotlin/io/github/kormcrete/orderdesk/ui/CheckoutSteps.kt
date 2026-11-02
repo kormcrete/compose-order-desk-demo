@@ -152,7 +152,15 @@ private fun ReviewStep(state: OrderDeskState, c: Checkout) {
         LagoonDivider()
         ReviewRow(if (c.shipping == Shipping.EXPRESS) LagoonIcons.Bolt else LagoonIcons.Truck, "Shipping", c.shipping.describe()) { c.step = 2 }
         LagoonDivider()
-        ReviewRow(if (c.payByInvoice) LagoonIcons.Invoice else LagoonIcons.Card, if (c.payByInvoice) "Invoice · 30 days" else "Card", c.payment.describe().removePrefix("Invoice (30 days) · ")) { c.step = 3 }
+        ReviewRow(
+            if (c.payByInvoice) LagoonIcons.Invoice else LagoonIcons.Card,
+            if (c.payByInvoice) "Invoice · 30 days" else "Card",
+            when {
+                !c.payByInvoice -> c.payment.describe()
+                c.poNumber.isBlank() -> "No PO number"
+                else -> "PO number ${c.poNumber.trim()}"
+            },
+        ) { c.step = 3 }
     }
     if (c.payByInvoice) {
         val warning = state.creditWarning(c)

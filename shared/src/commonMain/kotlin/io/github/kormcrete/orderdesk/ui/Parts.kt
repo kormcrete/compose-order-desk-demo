@@ -69,7 +69,8 @@ fun OrderStatus.tone() = when (this) {
 fun Product.code(): String {
     val words = name.split(' ', ',').filter { it.isNotBlank() }
     val first = words.first()
-    return if (first.length <= 3) first.uppercase() else words.take(2).joinToString("") { it.first().uppercase() }
+    return if (first.length <= 3 && first.any { it.isDigit() }) first.uppercase()
+    else words.take(2).joinToString("") { it.first().uppercase() }
 }
 
 fun Category.icon(): ImageVector = when (top.id) {

@@ -89,9 +89,9 @@ jobs:
         run: |
           jdk="${JAVA_HOME_25_X64:-${JAVA_HOME_25_ARM64:-$JAVA_HOME_25_arm64}}"
           [ "$RUNNER_OS" = Linux ] && sudo apt-get install -y -qq xvfb > /dev/null
-          desktopApp/aot/train-and-package.sh "$jdk" aot-out 2>&1 | tail -40
-          cat aot-out/aot.txt aot-out/memory-aot.txt 2>/dev/null
-          report=$(cat aot-out/aot.txt aot-out/memory-aot.txt 2>/dev/null | grep -v 'jvm args' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          desktopApp/aot/train-and-package.sh "$jdk" aot-out > aot.log 2>&1 || echo "train-and-package.sh failed with exit code $?" >> aot.log
+          cat aot.log
+          report=$( { cat aot-out/aot.txt aot-out/memory-aot.txt 2>/dev/null | grep -v 'jvm args'; echo '--- log tail'; tail -25 aot.log; } | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
           echo "::notice title=AOT cache (${RUNNER_OS})::${report:-no report}"
       - name: Publish screenshots
         if: success() && runner.os == 'Linux' && github.event_name == 'push'

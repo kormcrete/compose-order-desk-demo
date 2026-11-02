@@ -167,7 +167,7 @@ private fun RowScope.OrdersWorkspace(state: OrderDeskState) {
 }
 
 private val ORDER_COLUMNS: List<Pair<String, Dp?>> = listOf(
-    "Order" to 110.dp, "Date" to 100.dp, "Customer" to null, "Items" to 70.dp, "Total" to 100.dp, "Status" to 120.dp,
+    "Order" to 96.dp, "Date" to 72.dp, "Customer" to null, "Items" to 56.dp, "Total" to 92.dp, "Status" to 112.dp,
 )
 
 @Composable
@@ -184,15 +184,15 @@ private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Or
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Cell(110.dp) { Text(order.number, style = Lagoon.type.bodyStrong) }
-                    Cell(100.dp) { Text(order.date.formatShort(), style = Lagoon.type.body, color = c.inkMuted) }
-                    Row(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Cell(96.dp) { Text(order.number, style = Lagoon.type.bodyStrong) }
+                    Cell(72.dp) { Text(order.date.formatShort(), style = Lagoon.type.body, color = c.inkMuted) }
+                    Row(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         AvatarTile(order.customer.initials, key = order.customer.name, size = 28.dp)
                         Text(order.customer.name, style = Lagoon.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Cell(70.dp, end = true) { Text(order.units.toString(), style = Lagoon.type.body, color = c.inkMuted) }
-                    Cell(100.dp, end = true) { Text(order.totals.total.format(), style = Lagoon.type.bodyStrong) }
-                    Cell(120.dp) { StatusPill(order.status.label, order.status.tone()) }
+                    Cell(56.dp, end = true) { Text(order.units.toString(), style = Lagoon.type.body, color = c.inkMuted) }
+                    Cell(92.dp, end = true) { Text(order.totals.total.format(), style = Lagoon.type.bodyStrong) }
+                    Cell(112.dp) { StatusPill(order.status.label, order.status.tone()) }
                 }
                 LagoonDivider()
             }
@@ -207,9 +207,10 @@ private fun TableHeader(columns: List<Pair<String, Dp?>>, endAligned: Set<String
         columns.forEach { (title, width) ->
             val m = if (width == null) Modifier.weight(1f) else Modifier.width(width)
             Text(
-                title, m.padding(horizontal = 12.dp),
+                title, m.padding(horizontal = 8.dp),
                 style = Lagoon.type.label, color = Lagoon.colors.inkMuted,
                 textAlign = if (title in endAligned) TextAlign.End else TextAlign.Start,
+                maxLines = 1,
             )
         }
     }
@@ -218,7 +219,7 @@ private fun TableHeader(columns: List<Pair<String, Dp?>>, endAligned: Set<String
 
 @Composable
 private fun Cell(width: Dp, end: Boolean = false, content: @Composable () -> Unit) {
-    Box(Modifier.width(width).padding(horizontal = 12.dp), contentAlignment = if (end) Alignment.CenterEnd else Alignment.CenterStart) { content() }
+    Box(Modifier.width(width).padding(horizontal = 8.dp), contentAlignment = if (end) Alignment.CenterEnd else Alignment.CenterStart) { content() }
 }
 
 // ---------------------------------------------------------------- new order
@@ -291,26 +292,29 @@ private fun ProductsTable(state: OrderDeskState, draft: Draft, modifier: Modifie
             Text("${products.size} products", style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted)
         }
         LagoonDivider()
-        TableHeader(listOf("SKU" to 132.dp, "Product" to null, "Price" to 84.dp, "Stock" to 100.dp, "" to 104.dp), endAligned = setOf("Price", "Stock"))
+        TableHeader(listOf("Product" to null, "Price" to 76.dp, "Stock" to 84.dp, "" to 100.dp), endAligned = setOf("Price", "Stock"))
         LazyColumn(Modifier.weight(1f)) {
             items(products, key = { it.sku }) { p ->
                 val qty = draft.cart.quantityOf(p)
                 val faded = if (p.inStock) 1f else 0.5f
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = Lagoon.metrics.rowHeight - 2.dp).background(if (qty > 0) c.selection else c.surface).padding(horizontal = 12.dp),
+                    Modifier.fillMaxWidth().heightIn(min = Lagoon.metrics.rowHeight + 4.dp).background(if (qty > 0) c.selection else c.surface).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Cell(132.dp) { Text(p.sku, style = Lagoon.type.label.copy(fontFamily = FontFamily.Monospace, fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted.copy(alpha = faded)) }
-                    Text(p.name, Modifier.weight(1f).padding(horizontal = 12.dp), style = Lagoon.type.body, color = c.ink.copy(alpha = faded), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Cell(84.dp, end = true) { Text(p.price.format(), style = Lagoon.type.bodyStrong, color = c.ink.copy(alpha = faded)) }
-                    Cell(100.dp, end = true) {
+                    Column(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 6.dp)) {
+                        Text(p.name, style = Lagoon.type.body, color = c.ink.copy(alpha = faded), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(p.sku, style = Lagoon.type.label.copy(fontFamily = FontFamily.Monospace, fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted.copy(alpha = faded))
+                    }
+                    Cell(76.dp, end = true) { Text(p.price.format(), style = Lagoon.type.bodyStrong, color = c.ink.copy(alpha = faded)) }
+                    Cell(84.dp, end = true) {
                         Text(
-                            when { !p.inStock -> "Out of stock"; p.lowStock -> "Only ${p.stock}"; else -> p.stock.toString() },
+                            when { !p.inStock -> "Sold out"; p.lowStock -> "Only ${p.stock}"; else -> p.stock.toString() },
                             style = if (p.lowStock) Lagoon.type.label else Lagoon.type.small,
                             color = if (p.lowStock) c.attention else c.inkMuted.copy(alpha = faded),
+                            maxLines = 1,
                         )
                     }
-                    Cell(104.dp, end = true) {
+                    Cell(100.dp, end = true) {
                         AddOrStep(p, qty, { state.add(draft, p) }, { state.increment(draft, p) }, { state.decrement(draft, p) })
                     }
                 }
@@ -414,10 +418,7 @@ private fun CheckoutDialog(state: OrderDeskState, checkout: Checkout) {
                 CheckoutStepBody(state, checkout, Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 14.dp))
                 LagoonDivider()
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "To ${checkout.name}, ${checkout.address.oneLine()}", Modifier.weight(1f),
-                        style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
+                    Spacer(Modifier.weight(1f))
                     LagoonButton("Back", { state.backCheckout() }, style = LagoonButtonStyle.Outline)
                     LagoonButton(if (checkout.step == 4) "Place order · ${checkout.totals.total.format()}" else "Continue", { state.continueCheckout() })
                 }

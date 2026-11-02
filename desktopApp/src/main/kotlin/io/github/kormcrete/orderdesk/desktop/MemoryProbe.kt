@@ -69,7 +69,7 @@ object MemoryProbe {
                 ObjectName("com.sun.management:type=DiagnosticCommand"), "vmNativeMemory",
                 arrayOf<Any>(arrayOf("summary", "scale=MB")), arrayOf(Array<String>::class.java.name),
             ) as String
-        }.getOrElse { "native memory tracking unavailable: $it" }
+        }.getOrElse { "native memory tracking unavailable: $it ${generateSequence(it.cause) { c -> c.cause }.joinToString(" / ")}" }
         if ("unavailable" in nmt || "not enabled" in nmt) {
             appendLine(nmt.lines().first())
         } else {
