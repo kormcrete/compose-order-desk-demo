@@ -41,6 +41,33 @@ val desktopJvmArgs = listOf(
     "-Xss512k",
 )
 
+/**
+ * ProGuard needs the JDK's classes as a library. JDK 25 builds come without jmods (a runtime can be linked
+ * without them, JEP 493), so they come from the JDK 17 build toolchain; the app uses no newer API.
+ */
+val buildJdk = javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(17)) }
+    .map { it.metadata.installationPath.asFile }
+val jdkLibraryRules = layout.buildDirectory.file("proguard/jdk-library.pro")
+val writeJdkLibraryRules by tasks.registering {
+    description = "Writes the ProGuard rules that point at the JDK class library."
+    inputs.property("jdk", buildJdk.map { it.absolutePath })
+    outputs.file(jdkLibraryRules)
+    doLast {
+        val jmods = buildJdk.get().resolve("jmods")
+        val modules = listOf(
+            "java.base", "java.desktop", "java.datatransfer", "java.prefs", "java.xml", "java.logging",
+            "java.management", "java.naming", "jdk.management", "jdk.unsupported",
+        )
+        val rules = modules.map { jmods.resolve("$it.jmod") }.filter { it.exists() }.joinToString("\n") {
+            "-libraryjars '${it.absolutePath.replace('\\', '/')}'(!**.jar;!module-info.class)"
+        }
+        jdkLibraryRules.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(rules + "\n")
+        }
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "io.github.kormcrete.orderdesk.desktop.MainKt"
@@ -63,7 +90,7 @@ compose.desktop {
         buildTypes.release.proguard {
             // 7.8 is the first ProGuard that reads Java 25 class files (the bundled runtime).
             version.set("7.8.2")
-            configurationFiles.from(project.file("proguard-rules.pro"))
+            configurationFiles.from(project.file("proguard-rules.pro"), writeJdkLibraryRules)
             obfuscate.set(false)
             optimize.set(true)
         }
