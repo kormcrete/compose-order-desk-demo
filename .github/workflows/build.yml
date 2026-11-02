@@ -11,7 +11,8 @@ on:
         default: compose-theme
 
 permissions:
-  contents: read
+  # write: the Linux job publishes the rendered screens to the `screenshots` branch.
+  contents: write
 
 env:
   # lagoon-compose is built from source, next to this repository, until it is published.
@@ -70,7 +71,9 @@ jobs:
             *)       launcher="$app/bin/Order Desk" ;;
           esac
           du -sh "$app" | sed 's/^/packaged app size: /' | tee size.txt
-          export JAVA_TOOL_OPTIONS="-Dorderdesk.probe=$PWD/memory.txt -XX:NativeMemoryTracking=summary"
+          probe="$PWD/memory.txt"
+          [ "$RUNNER_OS" = Windows ] && probe=$(cygpath -w "$probe")
+          export JAVA_TOOL_OPTIONS="-Dorderdesk.probe=$probe -XX:NativeMemoryTracking=summary"
           if [ "$RUNNER_OS" = Linux ]; then
             sudo apt-get install -y -qq xvfb > /dev/null
             timeout 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$launcher" || true
@@ -80,13 +83,26 @@ jobs:
           cat size.txt memory.txt 2>/dev/null || echo "no memory report"
           report=$(cat size.txt memory.txt 2>/dev/null | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
           echo "::notice title=Desktop memory (${RUNNER_OS})::${report:-no report}"
-      - name: Keep screenshots
-        if: success() && runner.os == 'Linux'
-        uses: actions/upload-artifact@v7
-        with:
-          name: screenshots
-          path: compose-order-desk-demo/screenshots/
-          if-no-files-found: ignore
+      - name: AOT cache, trained at the install path
+        if: success()
+        continue-on-error: true
+        run: |
+          jdk="${JAVA_HOME_25_X64:-${JAVA_HOME_25_ARM64:-$JAVA_HOME_25_arm64}}"
+          [ "$RUNNER_OS" = Linux ] && sudo apt-get install -y -qq xvfb > /dev/null
+          desktopApp/aot/train-and-package.sh "$jdk" aot-out 2>&1 | tail -40
+          cat aot-out/aot.txt aot-out/memory-aot.txt 2>/dev/null
+          report=$(cat aot-out/aot.txt aot-out/memory-aot.txt 2>/dev/null | grep -v 'jvm args' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          echo "::notice title=AOT cache (${RUNNER_OS})::${report:-no report}"
+      - name: Publish screenshots
+        if: success() && runner.os == 'Linux' && github.event_name == 'push'
+        run: |
+          cd screenshots
+          git init -q -b screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Screens of ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots
       - name: Report build errors
         if: failure()
         run: |
@@ -97,25 +113,3 @@ jobs:
             echo '--- log tail ---'; grep -v '^> Task\|^\s*at \|Command: \[' build.log | tail -25; } \
             | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
           echo "::error title=Build errors::${errors:-no error lines found}"
-
-  # Publishes the rendered screens to the `screenshots` branch, for the README and for review.
-  screenshots:
-    needs: build
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          name: screenshots
-          path: screenshots
-      - name: Push to the screenshots branch
-        run: |
-          cd screenshots
-          git init -q -b screenshots
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Screens of ${GITHUB_SHA::7}"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots
