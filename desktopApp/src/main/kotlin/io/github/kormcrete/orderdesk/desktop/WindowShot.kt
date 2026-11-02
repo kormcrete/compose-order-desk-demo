@@ -8,7 +8,6 @@ import java.awt.Robot
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
-import javax.swing.SwingUtilities
 
 /**
  * Started with `-Dorderdesk.screenshot=<file.png>`: once the window has settled, captures it from the screen,
@@ -20,9 +19,8 @@ object WindowShot {
         val target = System.getProperty("orderdesk.screenshot")?.takeIf { it.isNotBlank() } ?: return
         LaunchedEffect(Unit) {
             delay(4000)
-            SwingUtilities.invokeAndWait {
-                window.toFront()
-            }
+            // Compose runs this on Swing's event thread: the window can be raised directly.
+            window.toFront()
             delay(800)
             val bounds = Rectangle(window.locationOnScreen, window.size)
             // The largest variant is the one in physical pixels on HiDPI displays.
