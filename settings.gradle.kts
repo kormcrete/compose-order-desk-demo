@@ -8,6 +8,11 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Downloads a missing JDK (17 to build, 25 for the desktop app) instead of failing.
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
 dependencyResolutionManagement {
     repositories {
         google()

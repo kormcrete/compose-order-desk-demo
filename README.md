@@ -48,8 +48,8 @@ git clone https://github.com/kormcrete/compose-order-desk-demo
 cd compose-order-desk-demo
 ```
 
-(`-Plagoon.build=<path>/compose` points to another checkout.) You need JDK 17 for the build and JDK 25 for
-the desktop app; Gradle finds an installed JDK 25 or takes `-Porderdesk.jdk=<path>`.
+(`-Plagoon.build=<path>/compose` points to another checkout.) The build uses JDK 17 and the desktop app runs
+on JDK 25; Gradle uses installed ones or downloads them (`-Porderdesk.jdk=<path>` picks a JDK 25 by hand).
 
 - **Desktop**: `./gradlew :desktopApp:run`, or `./gradlew :desktopApp:packageReleaseDmg`
   (`packageReleaseMsi` on Windows, `packageReleaseDeb` on Linux) for an installer.
@@ -75,7 +75,7 @@ trimmed to the modules it uses, and starts with:
 | `-Xss512k` | Smaller thread stacks |
 
 Release builds are shrunk with ProGuard. `-Dorderdesk.probe=<file>` makes the app walk through its main
-screens, then write what it uses (heap, non-heap, resident memory, the JVM's native breakdown) and quit;
+screens, then write what it uses (heap, non-heap, and resident memory as the operating system reports it) and quit;
 CI runs it on the packaged app on Linux, macOS and Windows.
 
 ## License

@@ -28,6 +28,7 @@ case "$(uname -s)" in
     install="/opt/order-desk"
     appdir="$install/lib/app"
     launcher="$install/bin/$name"
+    runtime="$install/lib/runtime"
     type=deb
     run() { limit 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$@"; }
     ;;
@@ -35,6 +36,7 @@ case "$(uname -s)" in
     install="/Applications/$name.app"
     appdir="$install/Contents/app"
     launcher="$install/Contents/MacOS/$name"
+    runtime="$install/Contents/runtime/Contents/Home"
     type=dmg
     run() { limit 120 "$@"; }
     ;;
@@ -42,6 +44,8 @@ case "$(uname -s)" in
     install="C:/Program Files/$name"
     appdir="$install/app"
     launcher="$install/$name.exe"
+    runtime="$install/runtime"
+    out=$(cygpath -m "$out")
     type=none # building an .msi needs the WiX toolset; the trained app is checked where it was trained
     run() { limit 120 "$@"; }
     ;;
@@ -53,7 +57,18 @@ $sudo rm -rf "$install"
 $sudo mkdir -p "$(dirname "$install")"
 $sudo cp -a "$image" "$install"
 $sudo chmod -R a+rwX "$install"
-JAVA_TOOL_OPTIONS="-XX:AOTCacheOutput=$appdir/orderdesk.aot -Dorderdesk.probe=$out/training.txt" run "$launcher" || true
+# JDK 25 writes the cache from a second java process; the trimmed runtime has no java command, so the
+# matching JDK's launcher stands in during training (same JDK build as the runtime) and is removed after.
+exe=""
+[ -f "$jdk/bin/java.exe" ] && exe=.exe
+had_java=no
+[ -f "$runtime/bin/java$exe" ] && had_java=yes
+$sudo mkdir -p "$runtime/bin"
+[ $had_java = no ] && $sudo cp "$jdk/bin/java$exe" "$runtime/bin/java$exe"
+# Quoted: the install path may contain spaces.
+JAVA_TOOL_OPTIONS="\"-XX:AOTCacheOutput=$appdir/orderdesk.aot\" \"-Dorderdesk.probe=$out/training.txt\"" run "$launcher" || true
+[ $had_java = no ] && $sudo rm -f "$runtime/bin/java$exe"
+rm -f "$appdir/orderdesk.aot.config"
 ls -l "$appdir/orderdesk.aot"
 
 # The launcher reads its JVM options from the .cfg next to the jars; $APPDIR is resolved by the launcher.
@@ -82,7 +97,7 @@ case "$type" in
     ;;
 esac
 fi
-JAVA_TOOL_OPTIONS="-Dorderdesk.probe=$out/memory-aot.txt -Xlog:class+load:file=$out/classload.txt" run "$launcher" || true
+JAVA_TOOL_OPTIONS="\"-Dorderdesk.probe=$out/memory-aot.txt\" \"-Xlog:class+load:file=$out/classload.txt\"" run "$launcher" || true
 total=$(grep -c 'source:' "$out/classload.txt" || true)
 cached=$(grep -c 'source: shared objects file' "$out/classload.txt" || true)
 echo "classes loaded: $total, from the AOT cache: $cached" | tee "$out/aot.txt"

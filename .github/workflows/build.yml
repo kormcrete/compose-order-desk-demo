@@ -73,7 +73,7 @@ jobs:
           du -sh "$app" | sed 's/^/packaged app size: /' | tee size.txt
           probe="$PWD/memory.txt"
           [ "$RUNNER_OS" = Windows ] && probe=$(cygpath -w "$probe")
-          export JAVA_TOOL_OPTIONS="-Dorderdesk.probe=$probe -XX:NativeMemoryTracking=summary"
+          export JAVA_TOOL_OPTIONS="-Dorderdesk.probe=$probe"
           # macOS has no `timeout`; perl's alarm does the same everywhere.
           limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }
           if [ "$RUNNER_OS" = Linux ]; then

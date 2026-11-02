@@ -6,12 +6,20 @@ import io.github.kormcrete.orderdesk.ui.OrderDeskState
 import kotlinx.coroutines.delay
 import java.io.File
 import java.lang.management.ManagementFactory
-import javax.management.ObjectName
+
+/** The process's memory as the operating system's own tools show it: ps on macOS and Linux, tasklist on Windows. */
+private fun osResident(): String? = runCatching {
+    val pid = ProcessHandle.current().pid().toString()
+    val windows = System.getProperty("os.name").lowercase().startsWith("windows")
+    val command = if (windows) listOf("tasklist", "/FI", "PID eq $pid", "/FO", "CSV", "/NH") else listOf("ps", "-o", "rss=", "-p", pid)
+    val text = ProcessBuilder(command).redirectErrorStream(true).start().inputStream.bufferedReader().readText().trim()
+    if (windows) text.split("\",\"").last().trim('"') + " (working set)" else "${text.trim().toLong() / 1024} MB"
+}.getOrNull()
 
 /**
  * Started with `-Dorderdesk.probe=<file>`: walks through the app like a user (orders, an order, a new order with four
  * products, the checkout steps), settles, then writes what the process uses to the file and quits.
- * Add `-XX:NativeMemoryTracking=summary` for the JVM's own breakdown. CI runs it on the packaged app.
+ * CI runs it on the packaged app on Linux, macOS and Windows.
  */
 object MemoryProbe {
     @Composable
@@ -64,18 +72,6 @@ object MemoryProbe {
             status.readLines().filter { it.startsWith("VmRSS") || it.startsWith("VmHWM") || it.startsWith("RssAnon") || it.startsWith("RssFile") }
                 .forEach { appendLine(it.replace(Regex("\\s+"), " ")) }
         }
-        val nmt = runCatching {
-            ManagementFactory.getPlatformMBeanServer().invoke(
-                ObjectName("com.sun.management:type=DiagnosticCommand"), "vmNativeMemory",
-                arrayOf<Any>(arrayOf("summary", "scale=MB")), arrayOf(Array<String>::class.java.name),
-            ) as String
-        }.getOrElse { "native memory tracking unavailable: $it ${generateSequence(it.cause) { c -> c.cause }.joinToString(" / ")}" }
-        if ("unavailable" in nmt || "not enabled" in nmt) {
-            appendLine(nmt.lines().first())
-        } else {
-            appendLine()
-            appendLine("native memory tracking (MB):")
-            nmt.lines().filter { it.trim().startsWith("Total") || it.trim().startsWith("-") }.take(30).forEach { appendLine(it.trimEnd()) }
-        }
+        osResident()?.let { appendLine("resident (as the OS reports it): $it") }
     }
 }
