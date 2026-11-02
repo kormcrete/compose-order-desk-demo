@@ -1,103 +1,110 @@
 #!/usr/bin/env bash
-# Adds a JDK AOT cache to the packaged desktop app, builds the installer from it, installs it, and checks it.
+# Adds a JDK AOT cache to the desktop app's installer, installs it, and checks that the JVM uses the cache.
 #
 # An AOT cache (JEP 483/514) holds classes already loaded and linked, and method profiles, from a training run,
-# so the app starts faster. The JVM only uses it with the same JDK and the same class path, jars at the same
-# paths: so the app is trained where its installer puts it, the cache goes inside the app, and the installer is
-# built from that app.
+# so the app starts faster. The JVM uses it only with the same JDK and the same jars: same paths, same sizes,
+# same timestamps. So the app is trained where its installer puts it, on the very files the installer installs,
+# and the cache is added to the package without touching the jars.
 #
 # Usage, from the repository root after `./gradlew :desktopApp:createReleaseDistributable`:
 #   desktopApp/aot/train-and-package.sh <JDK 25 home> <output dir>
-# Linux: /opt/order-desk, .deb · macOS: /Applications/Order Desk.app, .dmg · Windows: C:\Program Files\Order Desk, .msi
+# Linux: .deb into /opt/order-desk · macOS: .dmg with /Applications/Order Desk.app ·
+# Windows: trained and checked in C:\Program Files\Order Desk (an .msi needs the WiX toolset; not built here).
 set -euo pipefail
 
 jdk=$1
 out=$2
 mkdir -p "$out"
 out=$(cd "$out" && pwd)
-image=$(find desktopApp/build/compose/binaries/main-release/app -maxdepth 1 -mindepth 1 | head -1)
+image=$(cd "$(find desktopApp/build/compose/binaries/main-release/app -maxdepth 1 -mindepth 1 | head -1)" && pwd)
 name="Order Desk"
 version=1.0.0
 sudo=""
-# macOS has no `timeout`; perl's alarm does the same everywhere.
-limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 [ "$(id -u 2>/dev/null || echo 0)" != 0 ] && command -v sudo > /dev/null && sudo=sudo
+# A time limit for app runs: coreutils timeout where there is one (Linux, Windows' Git Bash), perl on macOS.
+if command -v timeout > /dev/null; then limit() { timeout "$@"; }; else limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }; fi
 
 case "$(uname -s)" in
   Linux)
-    install="/opt/order-desk"
-    appdir="$install/lib/app"
-    launcher="$install/bin/$name"
-    runtime="$install/lib/runtime"
-    type=deb
-    run() { limit 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$@"; }
-    ;;
+    install=/opt/order-desk; appdir="$install/lib/app"; launcher="$install/bin/$name"; runtime="$install/lib/runtime"
+    run() { limit 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$@"; } ;;
   Darwin)
-    install="/Applications/$name.app"
-    appdir="$install/Contents/app"
-    launcher="$install/Contents/MacOS/$name"
+    install="/Applications/$name.app"; appdir="$install/Contents/app"; launcher="$install/Contents/MacOS/$name"
     runtime="$install/Contents/runtime/Contents/Home"
-    type=dmg
-    run() { limit 120 "$@"; }
-    ;;
+    run() { limit 120 "$@"; } ;;
   *)
-    install="C:/Program Files/$name"
-    appdir="$install/app"
-    launcher="$install/$name.exe"
-    runtime="$install/runtime"
+    install="C:/Program Files/$name"; appdir="$install/app"; launcher="$install/$name.exe"; runtime="$install/runtime"
     out=$(cygpath -m "$out")
-    type=none # building an .msi needs the WiX toolset; the trained app is checked where it was trained
-    run() { limit 120 "$@"; }
-    ;;
+    run() { limit 120 "$@"; } ;;
 esac
 cfg="$appdir/$name.cfg"
-
-echo "== training at $install"
-$sudo rm -rf "$install"
-$sudo mkdir -p "$(dirname "$install")"
-$sudo cp -a "$image" "$install"
-$sudo chmod -R a+rwX "$install"
-# JDK 25 writes the cache from a second java process; the trimmed runtime has no java command, so the
-# matching JDK's launcher stands in during training (same JDK build as the runtime) and is removed after.
 exe=""
 [ -f "$jdk/bin/java.exe" ] && exe=.exe
-had_java=no
-[ -f "$runtime/bin/java$exe" ] && had_java=yes
-$sudo mkdir -p "$runtime/bin"
-[ $had_java = no ] && $sudo cp "$jdk/bin/java$exe" "$runtime/bin/java$exe"
-# Quoted: the install path may contain spaces.
-JAVA_TOOL_OPTIONS="\"-XX:AOTCacheOutput=$appdir/orderdesk.aot\" \"-Dorderdesk.probe=$out/training.txt\"" run "$launcher" || true
-[ $had_java = no ] && $sudo rm -f "$runtime/bin/java$exe"
-rm -f "$appdir/orderdesk.aot.config"
-ls -l "$appdir/orderdesk.aot"
 
-# The launcher reads its JVM options from the .cfg next to the jars; $APPDIR is resolved by the launcher.
-awk '{ print } /^\[JavaOptions\]/ { print "java-options=-XX:AOTCache=$APPDIR/orderdesk.aot" }' "$cfg" > "$out/app.cfg"
-cp "$out/app.cfg" "$cfg"
-grep -n 'AOTCache' "$cfg"
+# Runs the installed app through its main screens with JAVA_TOOL_OPTIONS (quoted: paths may have spaces).
+probe() { JAVA_TOOL_OPTIONS="$1" run "$launcher" || true; }
 
-if [ "$type" != none ]; then
-echo "== packaging the trained app as $type"
-trained="$out/image"
-rm -rf "$trained"
-mkdir -p "$trained"
-cp -a "$install" "$trained/"
-"$jdk/bin/jpackage" --type "$type" --app-image "$trained/$(basename "$install")" --name "$name" \
-  --app-version "$version" --vendor Kormcrete --dest "$out"
-ls -l "$out"
+train() {
+  echo "== training at $install"
+  # JDK 25 writes the cache from a second java process; the trimmed runtime has no java command, so the
+  # launcher of the same JDK build stands in for the training run and is removed after.
+  local added=no
+  if [ ! -f "$runtime/bin/java$exe" ]; then
+    $sudo mkdir -p "$runtime/bin"
+    $sudo cp "$jdk/bin/java$exe" "$runtime/bin/java$exe"
+    added=yes
+  fi
+  $sudo chmod -R a+rwX "$install"
+  probe "\"-XX:AOTCacheOutput=$appdir/orderdesk.aot\" \"-Dorderdesk.probe=$out/training.txt\""
+  [ $added = yes ] && $sudo rm -f "$runtime/bin/java$exe"
+  ls -l "$appdir/orderdesk.aot"
+  # The launcher reads its JVM options from the .cfg next to the jars and resolves $APPDIR itself.
+  awk '{ print } /^\[JavaOptions\]/ { print "java-options=-XX:AOTCache=$APPDIR/orderdesk.aot" }' "$cfg" > "$out/app.cfg"
+  $sudo cp "$out/app.cfg" "$cfg"
+}
 
-echo "== installing the $type and checking the cache"
-$sudo rm -rf "$install"
-case "$type" in
-  deb) $sudo dpkg -i "$out"/*.deb > /dev/null ;;
-  dmg)
-    mount=$(hdiutil attach -nobrowse "$out"/*.dmg | tail -1 | cut -f3-)
+case "$(uname -s)" in
+  Linux)
+    echo "== packaging and installing the .deb"
+    "$jdk/bin/jpackage" --type deb --app-image "$image" --name "$name" --app-version "$version" --vendor Kormcrete --dest "$out/plain"
+    plain=$(ls "$out"/plain/*.deb)
+    $sudo dpkg -i "$plain" > /dev/null
+    train
+    echo "== adding the cache to the .deb"
+    rm -rf "$out/deb"
+    dpkg-deb -R "$plain" "$out/deb"
+    cp "$appdir/orderdesk.aot" "$out/deb$appdir/"
+    cp "$cfg" "$out/deb$cfg"
+    dpkg-deb -b --root-owner-group "$out/deb" "$out/$(basename "$plain")" > /dev/null
+    $sudo dpkg -r order-desk > /dev/null
+    $sudo dpkg -i "$out/$(basename "$plain")" > /dev/null
+    ;;
+  Darwin)
+    $sudo rm -rf "$install"
+    $sudo cp -a "$image" "$install"
+    train
+    echo "== building the .dmg from the trained app"
+    rm -rf "$out/dmg"
+    mkdir -p "$out/dmg"
+    cp -a "$install" "$out/dmg/"
+    ln -s /Applications "$out/dmg/Applications"
+    hdiutil create -quiet -volname "$name" -srcfolder "$out/dmg" -ov -format UDZO "$out/$name-$version.dmg"
+    $sudo rm -rf "$install"
+    mount=$(hdiutil attach -nobrowse "$out/$name-$version.dmg" | tail -1 | cut -f3-)
     cp -a "$mount/$name.app" /Applications/
-    hdiutil detach "$mount" > /dev/null
+    hdiutil detach -quiet "$mount"
+    ;;
+  *)
+    rm -rf "$install"
+    cp -a "$image" "$install"
+    train
     ;;
 esac
-fi
-JAVA_TOOL_OPTIONS="\"-Dorderdesk.probe=$out/memory-aot.txt\" \"-Xlog:class+load:file=$out/classload.txt\"" run "$launcher" || true
+
+echo "== checking the installed app"
+probe "\"-Dorderdesk.probe=$out/memory-aot.txt\" \"-Xlog:class+load:file=$out/classload.txt\" \"-Xlog:aot=warning:file=$out/aot-warnings.txt\""
 total=$(grep -c 'source:' "$out/classload.txt" || true)
 cached=$(grep -c 'source: shared objects file' "$out/classload.txt" || true)
 echo "classes loaded: $total, from the AOT cache: $cached" | tee "$out/aot.txt"
+[ -s "$out/aot-warnings.txt" ] && head -5 "$out/aot-warnings.txt" | tee -a "$out/aot.txt"
+ls -l "$out" | grep -E '\.(deb|dmg)$' || true
