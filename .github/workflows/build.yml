@@ -90,7 +90,11 @@ jobs:
       - name: Report build errors
         if: failure()
         run: |
-          errors=$( { grep -E '^e: |error:|Could not|Unresolved|FAILED' build.log | grep -v '^> Task' | head -60; echo '--- log tail ---'; grep -v '^> Task\|^\s*at ' build.log | tail -40; } \
+          errors=$( { grep -E '^e: |error:|Could not|Unresolved|FAILED' build.log | grep -v '^> Task' | head -60
+            for f in desktopApp/build/compose/logs/proguardReleaseJars/*.txt; do
+              [ -f "$f" ] && { echo "--- $(basename "$f")"; grep -E 'Warning|Error|Note: there were|Unexpected' "$f" | sort | uniq -c | sort -rn | head -40; }
+            done
+            echo '--- log tail ---'; grep -v '^> Task\|^\s*at \|Command: \[' build.log | tail -25; } \
             | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
           echo "::error title=Build errors::${errors:-no error lines found}"
 
