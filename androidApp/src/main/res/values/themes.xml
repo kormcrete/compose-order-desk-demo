@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Lagoon ground behind the first frame, so start-up shows no white flash. -->
+    <style name="Theme.OrderDesk" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFF4F7FA</item>
+    </style>
+</resources>

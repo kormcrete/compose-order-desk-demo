@@ -1,0 +1,19 @@
+[versions]
+kotlin = "2.2.20"
+compose-multiplatform = "1.9.0"
+agp = "8.11.1"
+android-compileSdk = "35"
+android-minSdk = "26"
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+
+[libraries]
+lagoon-compose = { module = "io.github.kormcrete:lagoon-compose", version = "0.1.0-SNAPSHOT" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version = "1.10.1" }

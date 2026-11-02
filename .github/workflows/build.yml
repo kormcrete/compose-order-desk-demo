@@ -1,0 +1,117 @@
+name: build
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      lagoon-ref:
+        description: Branch of the Lagoon theme to build against
+        default: compose-theme
+
+permissions:
+  contents: read
+
+env:
+  # lagoon-compose is built from source, next to this repository, until it is published.
+  LAGOON_REF: ${{ inputs.lagoon-ref || 'compose-theme' }}
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux · Android, desktop
+            os: ubuntu-latest
+            tasks: ':shared:jvmTest :androidApp:assembleRelease :desktopApp:createReleaseDistributable -Pscreenshots=../screenshots'
+          - name: macOS · iOS, desktop
+            os: macos-latest
+            tasks: ':shared:iosSimulatorArm64Test :shared:linkReleaseFrameworkIosArm64 :desktopApp:createReleaseDistributable'
+          - name: Windows · desktop
+            os: windows-latest
+            tasks: ':desktopApp:createReleaseDistributable'
+    defaults:
+      run:
+        shell: bash
+        working-directory: compose-order-desk-demo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: compose-order-desk-demo
+      - uses: actions/checkout@v7
+        with:
+          repository: kormcrete/swing-flatlaf-lagoon-theme
+          ref: ${{ env.LAGOON_REF }}
+          path: swing-flatlaf-lagoon-theme
+      # 17 builds; 25 is the runtime the desktop app ships with (JAVA_HOME_25_*).
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: |
+            25
+            17
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build
+        run: |
+          set -o pipefail
+          ./gradlew ${{ matrix.tasks }} --console=plain --stacktrace 2>&1 | tee build.log
+      - name: Memory probe on the packaged release app
+        if: success()
+        run: |
+          set -o pipefail
+          app=$(find desktopApp/build/compose/binaries/main-release/app -maxdepth 1 -mindepth 1 | head -1)
+          case "$RUNNER_OS" in
+            macOS)   launcher="$app/Contents/MacOS/Order Desk" ;;
+            Windows) launcher="$app/Order Desk.exe" ;;
+            *)       launcher="$app/bin/Order Desk" ;;
+          esac
+          du -sh "$app" | sed 's/^/packaged app size: /' | tee size.txt
+          export JAVA_TOOL_OPTIONS="-Dorderdesk.probe=$PWD/memory.txt -XX:NativeMemoryTracking=summary"
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get install -y -qq xvfb > /dev/null
+            timeout 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$launcher" || true
+          else
+            timeout 120 "$launcher" || true
+          fi
+          cat size.txt memory.txt 2>/dev/null || echo "no memory report"
+          report=$(cat size.txt memory.txt 2>/dev/null | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          echo "::notice title=Desktop memory (${RUNNER_OS})::${report:-no report}"
+      - name: Keep screenshots
+        if: success() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots
+          path: compose-order-desk-demo/screenshots/
+          if-no-files-found: ignore
+      - name: Report build errors
+        if: failure()
+        run: |
+          errors=$( { grep -E '^e: |error:|Could not|Unresolved|FAILED' build.log | grep -v '^> Task' | head -60; echo '--- log tail ---'; grep -v '^> Task\|^\s*at ' build.log | tail -40; } \
+            | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          echo "::error title=Build errors::${errors:-no error lines found}"
+
+  # Publishes the rendered screens to the `screenshots` branch, for the README and for review.
+  screenshots:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: screenshots
+          path: screenshots
+      - name: Push to the screenshots branch
+        run: |
+          cd screenshots
+          git init -q -b screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Screens of ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots

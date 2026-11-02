@@ -1,0 +1,32 @@
+# build
+target/
+
+# IDE
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+.DS_Store
+
+# AI tooling: never part of this repository
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.cursor/
+.cursorrules
+.aider*
+.agent/
+.mcp.json
+
+# Compose (Gradle) build
+.gradle/
+**/build/
+.kotlin/
+local.properties
+/iosApp/*.xcodeproj/
+/iosApp/build/
+xcuserdata/
