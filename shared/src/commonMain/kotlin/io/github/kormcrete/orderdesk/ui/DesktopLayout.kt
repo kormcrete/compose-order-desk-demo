@@ -202,7 +202,7 @@ private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Or
     val c = Lagoon.colors
     val compact = LocalCompact.current
     LagoonCard(modifier) {
-        if (compact) TableHeader(listOf("Order" to null, "Total" to 92.dp, "Status" to 112.dp), endAligned = setOf("Total"))
+        if (compact) TableHeader(listOf("Order" to null, "Total" to 84.dp, "Status" to 104.dp), endAligned = setOf("Total"))
         else TableHeader(ORDER_COLUMNS, endAligned = setOf("Items", "Total"))
         LazyColumn(Modifier.weight(1f)) {
             items(orders, key = { it.number }) { order ->
@@ -215,18 +215,19 @@ private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Or
                 ) {
                     if (compact) {
                         // Customer, then number · date · items under it.
-                        Row(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.weight(1f).padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             AvatarTile(order.customer.initials, key = order.customer.name, size = 32.dp)
                             Column {
                                 Text(order.customer.name, style = Lagoon.type.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
                                     "${order.number} · ${order.date.formatShort()}",
-                                    style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted, maxLines = 1,
+                                    style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted,
+                                    maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
-                        Cell(92.dp, end = true) { Text(order.totals.total.format(), style = Lagoon.type.bodyStrong) }
-                        Cell(112.dp) { StatusPill(order.status.label, order.status.tone()) }
+                        Cell(84.dp, end = true) { Text(order.totals.total.format(), style = Lagoon.type.bodyStrong) }
+                        Cell(104.dp) { StatusPill(order.status.label, order.status.tone()) }
                         return@Row
                     }
                     Cell(96.dp) { Text(order.number, style = Lagoon.type.bodyStrong) }
