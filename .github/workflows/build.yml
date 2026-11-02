@@ -80,9 +80,9 @@ jobs:
             sudo apt-get install -y -qq xvfb > /dev/null
             limit 120 xvfb-run -a -s "-screen 0 1920x1080x24" "$launcher" || true
           else
-            limit 120 "$launcher" || true
+            limit 120 "$launcher" > app.log 2>&1 || echo "app exit code $?" >> app.log
           fi
-          [ -f memory.txt ] || echo "no memory report" > memory.txt
+          [ -f memory.txt ] || { echo "no memory report; the app said:"; tail -15 app.log 2>/dev/null; } > memory.txt
           cat size.txt memory.txt
           report=$(cat size.txt memory.txt | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
           echo "::notice title=Desktop memory (${RUNNER_OS})::${report:-no report}"

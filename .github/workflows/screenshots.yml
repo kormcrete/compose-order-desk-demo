@@ -65,10 +65,12 @@ jobs:
             if [ "$os" = linux ]; then
               limit 90 xvfb-run -a -s "-screen 0 1600x1000x24" "$launcher" || true
             else
-              limit 90 "$launcher" || true
+              limit 90 "$launcher" > "app-$scene.log" 2>&1 || echo "app exit code $?" >> "app-$scene.log"
             fi
           done
           ls -l shots
+          for f in app-*.log; do [ -f "$f" ] && { echo "== $f"; tail -15 "$f"; }; done
+          [ "$(ls shots | wc -l)" -gt 0 ] || { msg=$(tail -15 app-*.log 2>/dev/null | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }'); echo "::error title=No screenshots (${RUNNER_OS})::$msg"; exit 1; }
       - uses: actions/upload-artifact@v7
         with:
           name: shots-desktop-${{ runner.os }}
