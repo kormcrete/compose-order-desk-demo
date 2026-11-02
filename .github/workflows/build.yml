@@ -58,7 +58,7 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
-          ./gradlew ${{ matrix.tasks }} --console=plain --stacktrace 2>&1 | tee build.log
+          ./gradlew ${{ matrix.tasks }} --continue --console=plain --stacktrace 2>&1 | tee build.log
       - name: Memory probe on the packaged release app
         if: success()
         run: |

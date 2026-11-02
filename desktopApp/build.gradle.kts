@@ -61,6 +61,8 @@ compose.desktop {
         }
 
         buildTypes.release.proguard {
+            // 7.8 is the first ProGuard that reads Java 25 class files (the bundled runtime).
+            version.set("7.8.2")
             configurationFiles.from(project.file("proguard-rules.pro"))
             obfuscate.set(false)
             optimize.set(true)
