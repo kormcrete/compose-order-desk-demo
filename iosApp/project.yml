@@ -4,6 +4,13 @@ options:
   bundleIdPrefix: io.github.kormcrete
   deploymentTarget:
     iOS: "16.0"
+schemes:
+  OrderDesk:
+    build:
+      targets:
+        OrderDesk: all
+    run:
+      config: Debug
 targets:
   OrderDesk:
     type: application

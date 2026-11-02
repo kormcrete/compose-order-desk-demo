@@ -16,6 +16,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
-        setContent { App() }
+        // `adb shell am start … --es scene new-order` opens a prepared scene (screenshots, demos).
+        val scene = intent?.getStringExtra("scene")
+        setContent { App(scene = scene) }
     }
 }

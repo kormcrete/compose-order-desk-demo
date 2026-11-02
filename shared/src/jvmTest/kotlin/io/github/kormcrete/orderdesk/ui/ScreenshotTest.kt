@@ -23,7 +23,7 @@ class ScreenshotTest {
             width = (width * scale).toInt(),
             height = (height * scale).toInt(),
             density = Density(scale),
-        ) { App(state, metrics) }
+        ) { App(state = state, metrics = metrics) }
         try {
             // A few frames: fonts and layout settle before the picture is taken.
             var image = scene.render(0)

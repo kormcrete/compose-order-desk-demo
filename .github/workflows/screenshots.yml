@@ -1,0 +1,197 @@
+name: screenshots
+
+# The README pictures: the same scenes of the real app on Android, iPhone, macOS, Windows and Linux.
+# Published to the `platforms/` folder of the `screenshots` branch.
+on:
+  push:
+    branches: [main, first-version]
+  workflow_dispatch:
+    inputs:
+      lagoon-ref:
+        description: Branch of the Lagoon theme to build against
+        default: compose-theme
+
+permissions:
+  contents: read
+
+env:
+  LAGOON_REF: ${{ inputs.lagoon-ref || 'compose-theme' }}
+  SCENES: orders new-order
+
+jobs:
+  desktop:
+    name: Desktop · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    defaults:
+      run:
+        shell: bash
+        working-directory: compose-order-desk-demo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: compose-order-desk-demo
+      - uses: actions/checkout@v7
+        with:
+          repository: kormcrete/swing-flatlaf-lagoon-theme
+          ref: ${{ env.LAGOON_REF }}
+          path: swing-flatlaf-lagoon-theme
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: |
+            25
+            17
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build the app
+        run: ./gradlew :desktopApp:createReleaseDistributable --console=plain
+      - name: Take the screenshots
+        run: |
+          app=$(find desktopApp/build/compose/binaries/main-release/app -maxdepth 1 -mindepth 1 | head -1)
+          out="$PWD/shots"
+          mkdir -p "$out"
+          case "$RUNNER_OS" in
+            macOS)   launcher="$app/Contents/MacOS/Order Desk"; os=macos ;;
+            Windows) launcher="$app/Order Desk.exe"; os=windows; out=$(cygpath -m "$out") ;;
+            *)       launcher="$app/bin/Order Desk"; os=linux
+                     sudo apt-get install -y -qq xvfb > /dev/null ;;
+          esac
+          if command -v timeout > /dev/null; then limit() { timeout "$@"; }; else limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }; fi
+          for scene in $SCENES; do
+            export JAVA_TOOL_OPTIONS="\"-Dorderdesk.scene=$scene\" \"-Dorderdesk.screenshot=$out/$os-$scene.png\""
+            if [ "$os" = linux ]; then
+              limit 90 xvfb-run -a -s "-screen 0 1600x1000x24" "$launcher" || true
+            else
+              limit 90 "$launcher" || true
+            fi
+          done
+          ls -l shots
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shots-desktop-${{ runner.os }}
+          path: compose-order-desk-demo/shots/
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: compose-order-desk-demo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: compose-order-desk-demo
+      - uses: actions/checkout@v7
+        with:
+          repository: kormcrete/swing-flatlaf-lagoon-theme
+          ref: ${{ env.LAGOON_REF }}
+          path: swing-flatlaf-lagoon-theme
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build the app
+        run: ./gradlew :androidApp:assembleDebug --console=plain
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Take the screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_7
+          disable-animations: true
+          working-directory: compose-order-desk-demo
+          script: ci/android-shots.sh shots ${{ env.SCENES }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shots-android
+          path: compose-order-desk-demo/shots/
+
+  ios:
+    name: iPhone
+    runs-on: macos-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: compose-order-desk-demo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: compose-order-desk-demo
+      - uses: actions/checkout@v7
+        with:
+          repository: kormcrete/swing-flatlaf-lagoon-theme
+          ref: ${{ env.LAGOON_REF }}
+          path: swing-flatlaf-lagoon-theme
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen > /dev/null
+          (cd iosApp && xcodegen)
+      - name: Pick an iPhone simulator
+        run: |
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = [d for runtime, ds in json.load(sys.stdin)["devices"].items() if "iOS" in runtime for d in ds]
+          phones = [d for d in devices if d["name"].startswith("iPhone") and "Pro" in d["name"] and "Max" not in d["name"]] \
+              or [d for d in devices if d["name"].startswith("iPhone")]
+          print(phones[-1]["udid"])')
+          echo "UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl list devices | grep "$udid"
+      - name: Build the app
+        run: |
+          set -o pipefail
+          xcodebuild -project iosApp/OrderDesk.xcodeproj -scheme OrderDesk -configuration Debug \
+            -destination "id=$UDID" -derivedDataPath iosApp/build CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -40
+      - name: Take the screenshots
+        run: |
+          mkdir -p shots
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b > /dev/null
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularMode active --cellularBars 4 --wifiBars 3
+          xcrun simctl install "$UDID" iosApp/build/Build/Products/Debug-iphonesimulator/OrderDesk.app
+          for scene in $SCENES; do
+            SIMCTL_CHILD_ORDERDESK_SCENE=$scene xcrun simctl launch --terminate-running-process "$UDID" io.github.kormcrete.orderdesk
+            sleep 12
+            xcrun simctl io "$UDID" screenshot "shots/ios-$scene.png"
+          done
+          ls -l shots
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shots-ios
+          path: compose-order-desk-demo/shots/
+
+  publish:
+    needs: [desktop, android, ios]
+    if: always() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: shots-*
+          merge-multiple: true
+          path: shots
+      - name: Publish to the screenshots branch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ls -l shots
+          ci/publish-screens.sh shots platforms

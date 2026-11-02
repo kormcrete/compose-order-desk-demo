@@ -34,7 +34,8 @@ val WIDE_LAYOUT = 840.dp
 /** Order Desk on every platform: the phone layout on narrow windows, the desktop layout on wide ones. */
 @Composable
 fun App(
-    state: OrderDeskState = remember { OrderDeskState(Seed.store()) },
+    scene: String? = null,
+    state: OrderDeskState = remember { OrderDeskState(Seed.store()).also { Scenes.show(it, scene) } },
     metrics: LagoonMetrics = platformLagoonMetrics,
 ) {
     LagoonTheme(metrics) {
