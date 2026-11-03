@@ -50,9 +50,9 @@ jobs:
           path: compose-order-desk-demo
       - uses: actions/checkout@v7
         with:
-          repository: kormcrete/swing-flatlaf-lagoon-theme
+          repository: kormcrete/lagoon-theme
           ref: ${{ env.LAGOON_REF }}
-          path: swing-flatlaf-lagoon-theme
+          path: lagoon-theme
       # 17 builds; 25 is the runtime the desktop app ships with (JAVA_HOME_25_*).
       - uses: actions/setup-java@v6
         with:

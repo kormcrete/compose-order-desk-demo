@@ -2,7 +2,7 @@
 
 Order Desk, a small order entry app where a shop employee takes an order for a customer, written once in
 [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/) and running on Android, iPhone and iPad,
-macOS, Windows and Linux. It is the demo of the [Lagoon theme](https://github.com/kormcrete/swing-flatlaf-lagoon-theme)
+macOS, Windows and Linux. It is the demo of the [Lagoon theme](https://github.com/kormcrete/lagoon-theme)
 for Compose: the same colours, type and shapes on every platform, with sizes that follow the platform, touch on
 phones and denser on desktop.
 
@@ -56,7 +56,7 @@ controls and 14 px text on desktop.
 Clone this repository and the Lagoon theme side by side; Gradle builds the theme from source until it is published:
 
 ```bash
-git clone https://github.com/kormcrete/swing-flatlaf-lagoon-theme.git
+git clone https://github.com/kormcrete/lagoon-theme.git
 git clone https://github.com/kormcrete/compose-order-desk-demo.git
 cd compose-order-desk-demo
 ```
