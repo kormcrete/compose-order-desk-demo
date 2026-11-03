@@ -8,7 +8,7 @@ on:
     inputs:
       lagoon-ref:
         description: Branch of the Lagoon theme to build against
-        default: compose-theme
+        default: main
 
 # A newer push to the same branch cancels this branch's older runs.
 concurrency:
@@ -21,7 +21,7 @@ permissions:
 
 env:
   # lagoon-compose is built from source, next to this repository, until it is published.
-  LAGOON_REF: ${{ inputs.lagoon-ref || 'compose-theme' }}
+  LAGOON_REF: ${{ inputs.lagoon-ref || 'main' }}
 
 jobs:
   build:
