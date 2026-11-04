@@ -71,5 +71,7 @@ class ScreenshotTest {
         // A small window (1000 wide): the compact desktop layout.
         shoot("desktop-small-1-orders", newState().apply { selected = "ORD-1637" }, 1000, 700, 1.5f, LagoonMetrics.Desktop)
         shoot("desktop-small-2-new-order", newState().apply { withDraft(this) }, 1000, 700, 1.5f, LagoonMetrics.Desktop)
+        // A low window: the order on the right scrolls, and its scrollbar shows it.
+        shoot("desktop-small-3-order-scrolls", newState().apply { selected = "ORD-1637" }, 1280, 560, 1.5f, LagoonMetrics.Desktop)
     }
 }

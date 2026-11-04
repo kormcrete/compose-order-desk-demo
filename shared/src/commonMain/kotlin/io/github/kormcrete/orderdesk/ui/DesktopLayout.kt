@@ -23,11 +23,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -181,7 +179,7 @@ private fun RowScope.OrdersWorkspace(state: OrderDeskState) {
             OrdersTable(state, orders, selected, Modifier.weight(1f).fillMaxHeight())
             if (selected != null) {
                 Column(Modifier.width(if (compact) 320.dp else 360.dp).fillMaxHeight()) {
-                    OrderSummary(selected, Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 12.dp), dense = true)
+                    Scrolling(Modifier.weight(1f)) { OrderSummary(selected, it.padding(bottom = 12.dp), dense = true) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LagoonButton("Save receipt", { state.receipt = selected }, Modifier.weight(1f), style = LagoonButtonStyle.Tonal, icon = LagoonIcons.Receipt)
                         if (selected.cancellable) LagoonButton("Cancel order", { state.confirmCancel = selected }, Modifier.weight(1f), style = LagoonButtonStyle.Danger)
@@ -203,7 +201,7 @@ private fun OrdersTable(state: OrderDeskState, orders: List<Order>, selected: Or
     LagoonCard(modifier) {
         if (compact) TableHeader(listOf("Order" to null, "Total" to 84.dp, "Status" to 104.dp), endAligned = setOf("Total"))
         else TableHeader(ORDER_COLUMNS, endAligned = setOf("Items", "Total"))
-        LazyColumn(Modifier.weight(1f)) {
+        ScrollingList {
             items(orders, key = { it.number }) { order ->
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = Lagoon.metrics.rowHeight)
@@ -360,7 +358,7 @@ private fun ProductsTable(state: OrderDeskState, draft: Draft, modifier: Modifie
         val compact = LocalCompact.current
         if (compact) TableHeader(listOf("Product" to null, "Price" to 76.dp, "" to 100.dp), endAligned = setOf("Price"))
         else TableHeader(listOf("Product" to null, "Price" to 76.dp, "Stock" to 84.dp, "" to 100.dp), endAligned = setOf("Price", "Stock"))
-        LazyColumn(Modifier.weight(1f)) {
+        ScrollingList {
             items(products, key = { it.sku }) { p ->
                 val qty = draft.cart.quantityOf(p)
                 val faded = if (p.inStock) 1f else 0.5f
@@ -410,24 +408,26 @@ private fun CartPanel(state: OrderDeskState, draft: Draft, modifier: Modifier) {
             Text("${cart.lines.size} products · ${cart.units} items", style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted)
         }
         LagoonDivider()
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            if (cart.isEmpty) EmptyNote("Add products with +.")
-            cart.lines.forEach { line ->
-                val p = line.product
-                Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row {
-                        Text(p.name, Modifier.weight(1f), style = Lagoon.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(Pricing.lineTotal(line).format(), style = Lagoon.type.bodyStrong)
+        Scrolling(Modifier.weight(1f)) {
+            Column(it.padding(horizontal = 16.dp)) {
+                if (cart.isEmpty) EmptyNote("Add products with +.")
+                cart.lines.forEach { line ->
+                    val p = line.product
+                    Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row {
+                            Text(p.name, Modifier.weight(1f), style = Lagoon.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(Pricing.lineTotal(line).format(), style = Lagoon.type.bodyStrong)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            LagoonStepper(line.quantity, { state.decrement(draft, p) }, { state.increment(draft, p) }, label = p.name, canIncrement = line.quantity < p.stock)
+                            Text("× ${p.price.format()}", Modifier.weight(1f), style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted)
+                            if (line.discounted) LagoonTag("−5%", tone = LagoonTone.Success)
+                            LagoonIconButton(LagoonIcons.Trash, "Remove ${p.name}", { state.remove(draft, p) }, size = 28.dp, lifted = false, tint = c.inkMuted)
+                        }
+                        if (line.overStock) Text(p.onlyInStockMessage(), style = Lagoon.type.small, color = c.danger)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        LagoonStepper(line.quantity, { state.decrement(draft, p) }, { state.increment(draft, p) }, label = p.name, canIncrement = line.quantity < p.stock)
-                        Text("× ${p.price.format()}", Modifier.weight(1f), style = Lagoon.type.label.copy(fontWeight = Lagoon.type.small.fontWeight), color = c.inkMuted)
-                        if (line.discounted) LagoonTag("−5%", tone = LagoonTone.Success)
-                        LagoonIconButton(LagoonIcons.Trash, "Remove ${p.name}", { state.remove(draft, p) }, size = 28.dp, lifted = false, tint = c.inkMuted)
-                    }
-                    if (line.overStock) Text(p.onlyInStockMessage(), style = Lagoon.type.small, color = c.danger)
+                    LagoonDivider()
                 }
-                LagoonDivider()
             }
         }
         Column(Modifier.background(c.ground.copy(alpha = 0.5f)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -453,14 +453,16 @@ private fun CustomerPickerDialog(state: OrderDeskState) {
                 LagoonIconButton(LagoonIcons.Close, "Close", { state.pickingCustomer = false }, size = 32.dp, lifted = false, background = Lagoon.colors.surfaceMuted)
             }
             LagoonSearchField(query, { query = it }, "Search customers or cities", Modifier.fillMaxWidth().padding(vertical = 14.dp))
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                val list = if (query.isBlank()) state.store.orders.recentCustomers(3) + state.store.findCustomers("").filterNot { it in state.store.orders.recentCustomers(3) }
-                else state.store.findCustomers(query)
-                CustomerList(list) { customer ->
-                    if (draft != null) state.changeCustomer(draft, customer) else state.startDraft(customer)
-                    state.pickingCustomer = false
+            Scrolling {
+                Column(it) {
+                    val list = if (query.isBlank()) state.store.orders.recentCustomers(3) + state.store.findCustomers("").filterNot { it in state.store.orders.recentCustomers(3) }
+                    else state.store.findCustomers(query)
+                    CustomerList(list) { customer ->
+                        if (draft != null) state.changeCustomer(draft, customer) else state.startDraft(customer)
+                        state.pickingCustomer = false
+                    }
+                    if (list.isEmpty()) EmptyNote("No customer matches.")
                 }
-                if (list.isEmpty()) EmptyNote("No customer matches.")
             }
         }
     }
@@ -490,7 +492,7 @@ private fun CheckoutDialog(state: OrderDeskState, checkout: Checkout) {
                     }
                     LagoonIconButton(LagoonIcons.Close, "Close checkout", { state.checkout = null }, size = 32.dp, lifted = false, background = c.surfaceMuted)
                 }
-                CheckoutStepBody(state, checkout, Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 14.dp))
+                Scrolling(Modifier.weight(1f)) { CheckoutStepBody(state, checkout, it.padding(horizontal = 24.dp, vertical = 14.dp)) }
                 LagoonDivider()
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.weight(1f))

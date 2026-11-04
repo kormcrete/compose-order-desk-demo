@@ -2,7 +2,12 @@ package io.github.kormcrete.orderdesk.ui
 
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -113,6 +118,23 @@ class InteractionTest {
 
         kotlin.test.assertEquals(stock - 1, paper.stock)
         kotlin.test.assertTrue(onAllNodesWithText(number).fetchSemanticsNodes().isNotEmpty(), "$number is not on screen")
+    }
+
+    /** The order on the right is taller than a low window: its last line comes into view by scrolling. */
+    @Test
+    fun desktopOrderScrollsInALowWindow() = runDesktopComposeUiTest(width = 1280, height = 560) {
+        val state = newState().apply { selected = "ORD-1637" }
+        setContent { App(state = state, metrics = LagoonMetrics.Desktop) }
+        waitForIdle()
+        val line = state.store.orders.find("ORD-1637")!!.lines.last().name
+        onNodeWithText(line).assertIsNotDisplayed()
+        onRoot().performMouseInput {
+            moveTo(Offset(1100f, 300f))
+            repeat(12) { scroll(1f) }
+        }
+        mainClock.advanceTimeBy(1000)
+        waitForIdle()
+        onNodeWithText(line).assertIsDisplayed()
     }
 
     @Test

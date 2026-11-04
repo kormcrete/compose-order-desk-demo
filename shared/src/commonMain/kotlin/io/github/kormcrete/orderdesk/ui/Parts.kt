@@ -3,15 +3,15 @@ package io.github.kormcrete.orderdesk.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,7 +19,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -304,6 +310,26 @@ fun AddOrStep(product: Product, quantity: Int, onAdd: () -> Unit, onIncrement: (
             }
         }
         else -> Box(Modifier.size(40.dp))
+    }
+}
+
+/** Content taller than the space it gets scrolls, with a scrollbar on computers: pass the modifier on to the content. */
+@Composable
+fun Scrolling(modifier: Modifier = Modifier, content: @Composable (Modifier) -> Unit) {
+    val state = rememberScrollState()
+    Box(modifier) {
+        content(Modifier.verticalScroll(state))
+        ScrollBar(state, Modifier.matchParentSize().wrapContentWidth(Alignment.End))
+    }
+}
+
+/** A list that fills the rest of a column, with a scrollbar on computers. */
+@Composable
+fun ColumnScope.ScrollingList(content: LazyListScope.() -> Unit) {
+    val state = rememberLazyListState()
+    Box(Modifier.weight(1f)) {
+        LazyColumn(Modifier.fillMaxSize(), state, content = content)
+        ScrollBar(state, Modifier.matchParentSize().wrapContentWidth(Alignment.End))
     }
 }
 
