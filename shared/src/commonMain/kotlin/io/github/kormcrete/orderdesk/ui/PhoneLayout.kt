@@ -91,7 +91,6 @@ private fun TopBar(title: String, subtitle: String? = null, close: Boolean = fal
 
 @Composable
 private fun PhoneOrders(state: OrderDeskState) {
-    state.revision
     val c = Lagoon.colors
     val orders = state.visibleOrders()
     val byMonth = orders.groupBy { "${it.date.monthName()} ${it.date.year}" }
@@ -149,7 +148,6 @@ fun EmptyNote(text: String) {
 
 @Composable
 private fun PhoneOrderDetail(state: OrderDeskState, number: String) {
-    state.revision
     val order = state.store.orders.find(number) ?: return
     Column(Modifier.fillMaxSize()) {
         TopBar(order.number, onBack = { state.pop() }, action = { LagoonIconButton(LagoonIcons.More, "More options", {}) })
@@ -220,7 +218,6 @@ fun CustomerList(customers: List<io.github.kormcrete.orderdesk.model.Customer>, 
 
 @Composable
 private fun PhoneProducts(state: OrderDeskState, draft: Draft) {
-    state.revision
     val catalog = state.store.catalog
     val products = catalog.search(draft.category, draft.productQuery)
     var searching by remember { mutableStateOf(draft.productQuery.isNotEmpty()) }
@@ -324,7 +321,6 @@ private fun CartBar(draft: Draft, onClick: () -> Unit, modifier: Modifier = Modi
 
 @Composable
 private fun PhoneCart(state: OrderDeskState, draft: Draft) {
-    state.revision
     val c = Lagoon.colors
     Column(Modifier.fillMaxSize()) {
         TopBar("Cart", subtitle = draft.customer.name, onBack = { state.pop() })
@@ -365,7 +361,6 @@ private fun PhoneCart(state: OrderDeskState, draft: Draft) {
 
 @Composable
 private fun PhoneCheckout(state: OrderDeskState, checkout: Checkout) {
-    state.revision
     Column(Modifier.fillMaxSize()) {
         TopBar("Checkout", subtitle = "${checkout.draft.customer.name} · ${checkout.totals.total.format()}", onBack = { state.backCheckout(); if (state.checkout == null) state.pop() })
         Column(Modifier.padding(20.dp, 8.dp, 20.dp, 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

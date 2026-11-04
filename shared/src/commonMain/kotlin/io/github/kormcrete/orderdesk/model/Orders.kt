@@ -1,5 +1,10 @@
 package io.github.kormcrete.orderdesk.model
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 /** How an order is paid: on invoice (with an optional PO number) or by card (only the last four digits are kept). */
 class Payment private constructor(val isInvoice: Boolean, val poNumber: String, val cardLast4: String) {
     /** "Invoice (30 days) · PO PO-2026-131" or "Card ending 4242". */
@@ -52,7 +57,7 @@ class Order internal constructor(
     val lines: List<OrderLine> = lines.toList()
     val totals: Totals = Pricing.of(this.lines, shipping)
 
-    var status: OrderStatus = status
+    var status: OrderStatus by mutableStateOf(status)
         internal set
 
     /** The number of units: "7 items". */
@@ -63,7 +68,7 @@ class Order internal constructor(
 
 /** All orders, the next order number, and what placing and cancelling do to stock and credit. */
 class OrderBook internal constructor(private val catalog: Catalog, private var nextNumberValue: Int) {
-    private val _orders = mutableListOf<Order>()
+    private val _orders = mutableStateListOf<Order>()
     val orders: List<Order> get() = _orders
 
     /** An order from before the app started (seed data): no effect on stock or credit. */

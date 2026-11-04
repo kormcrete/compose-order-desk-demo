@@ -74,7 +74,6 @@ private val LocalCompact = compositionLocalOf { false }
 /** The desktop layout: sidebar, then the orders workspace or a draft's workspace; checkout as a dialog. */
 @Composable
 fun DesktopLayout(state: OrderDeskState) {
-    state.revision
     BoxWithConstraints(Modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalCompact provides (maxWidth < COMPACT_BELOW)) {
             Row(Modifier.fillMaxSize()) {

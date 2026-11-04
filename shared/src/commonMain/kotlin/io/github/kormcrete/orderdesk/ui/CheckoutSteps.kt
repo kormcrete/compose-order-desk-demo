@@ -47,7 +47,6 @@ fun stepTitle(step: Int) = when (step) {
 /** The body of the current checkout step. */
 @Composable
 fun CheckoutStepBody(state: OrderDeskState, c: Checkout, modifier: Modifier = Modifier) {
-    state.revision // a placed or changed order refreshes the review
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when (c.step) {
             1 -> AddressStep(c)

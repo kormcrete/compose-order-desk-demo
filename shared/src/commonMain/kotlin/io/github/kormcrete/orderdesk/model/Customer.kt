@@ -1,5 +1,9 @@
 package io.github.kormcrete.orderdesk.model
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 /** The countries Order Desk delivers to, with their postal code rule. */
 enum class Country(val label: String, private val postalCode: Regex, val postalCodeRule: String) {
     GERMANY("Germany", Regex("\\d{5}"), "Germany uses a 5-digit postal code"),
@@ -45,7 +49,7 @@ data class PaymentTerms(val invoiceAllowed: Boolean, val creditLimit: Money, val
 
 /** A customer of the shop. What they owe on open invoices changes as orders are placed and cancelled. */
 class Customer(val name: String, val address: Address, val terms: PaymentTerms, owes: Money) {
-    var owes: Money = owes
+    var owes: Money by mutableStateOf(owes)
         internal set
 
     /** Credit still open on account; zero for card-only customers. */

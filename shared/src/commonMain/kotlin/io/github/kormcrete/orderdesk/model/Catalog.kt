@@ -1,5 +1,9 @@
 package io.github.kormcrete.orderdesk.model
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+
 /** A node of the product tree; "All products" is the root. */
 class Category(val id: String, val label: String, val parent: Category?) {
     private val _children = mutableListOf<Category>()
@@ -27,7 +31,7 @@ class Category(val id: String, val label: String, val parent: Category?) {
 
 /** A product in the catalog; only its stock changes. */
 class Product(val sku: String, val name: String, val category: Category, val price: Money, stock: Int) {
-    var stock: Int = stock
+    var stock: Int by mutableIntStateOf(stock)
         internal set
 
     val inStock get() = stock > 0

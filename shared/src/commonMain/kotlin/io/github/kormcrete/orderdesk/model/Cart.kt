@@ -1,8 +1,13 @@
 package io.github.kormcrete.orderdesk.model
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.setValue
+
 /** A product and how many of it, in a cart; the price is the product's current price. */
 class CartLine internal constructor(val product: Product, quantity: Int) : PricedLine {
-    override var quantity: Int = quantity
+    override var quantity: Int by mutableIntStateOf(quantity)
         internal set
     override val name get() = product.name
     override val price get() = product.price
@@ -14,9 +19,9 @@ class CartLine internal constructor(val product: Product, quantity: Int) : Price
     val discounted get() = Pricing.lineDiscount(this).isPositive
 }
 
-/** The lines of a new order, in the order they were added. */
+/** The lines of a new order, in the order they were added. Compose state: a screen showing them follows every change. */
 class Cart {
-    private val _lines = mutableListOf<CartLine>()
+    private val _lines = mutableStateListOf<CartLine>()
     val lines: List<CartLine> get() = _lines
 
     /** Adds to the product's line if there is one. */

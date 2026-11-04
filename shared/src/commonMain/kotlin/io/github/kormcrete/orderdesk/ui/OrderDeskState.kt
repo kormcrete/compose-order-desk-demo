@@ -86,20 +86,8 @@ class Checkout(val draft: Draft) {
     }
 }
 
-/** Everything the screens read and change. Model changes bump [revision], so composables reading it refresh. */
+/** Everything the screens read and change. The model's changing parts are Compose state too, so screens follow them. */
 class OrderDeskState(val store: Store) {
-    var revision by mutableIntStateOf(0)
-        private set
-
-    init {
-        store.addListener { revision++ }
-    }
-
-    /** Tells the UI that the model changed outside the store (a cart). */
-    fun touch() {
-        revision++
-    }
-
     // ---- orders
     var query by mutableStateOf("")
     var statusFilter by mutableStateOf<OrderStatus?>(null)
@@ -127,7 +115,6 @@ class OrderDeskState(val store: Store) {
 
     fun changeCustomer(draft: Draft, customer: Customer) {
         draft.customer = customer
-        touch()
     }
 
     fun discard(draft: Draft) {
@@ -135,10 +122,10 @@ class OrderDeskState(val store: Store) {
         if (activeDraft === draft) activeDraft = null
     }
 
-    fun add(draft: Draft, product: Product) { draft.cart.add(product); touch() }
-    fun increment(draft: Draft, product: Product) { draft.cart.add(product); touch() }
-    fun decrement(draft: Draft, product: Product) { draft.cart.decrement(product); touch() }
-    fun remove(draft: Draft, product: Product) { draft.cart.remove(product); touch() }
+    fun add(draft: Draft, product: Product) = draft.cart.add(product)
+    fun increment(draft: Draft, product: Product) = draft.cart.add(product)
+    fun decrement(draft: Draft, product: Product) = draft.cart.decrement(product)
+    fun remove(draft: Draft, product: Product) = draft.cart.remove(product)
 
     // ---- checkout
     var checkout by mutableStateOf<Checkout?>(null)

@@ -34,6 +34,8 @@ kotlin {
         jvmTest.dependencies {
             // Renders the screens headless into PNGs (ScreenshotTest).
             implementation(compose.desktop.currentOs)
+            // Clicks through the screens headless (InteractionTest).
+            implementation(compose.desktop.uiTestJUnit4)
         }
     }
 }
