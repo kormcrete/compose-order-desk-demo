@@ -178,6 +178,10 @@ An AOT cache (JDK 25) makes the start faster: classes are loaded and linked once
 to the jars. The JVM uses a cache only with the very same jars, so `desktopApp/aot/train-and-package.sh` trains the
 app where its installer puts it, on the files the installer installs, and adds the cache to that package.
 
+The cache compares the jar's timestamp, so the Windows zip keeps its fast start when it is unzipped with a tool that
+restores the stored times, such as 7-Zip. Windows' own Extract All shifts them by the time zone: the app then works the
+same, and starts without the cache.
+
 The splash, where the kormcrete k builds itself as in the Swing demo, is drawn by Compose in a small window of its own.
 The JVM's own splash screen would show sooner, but on macOS, painting on it frame by frame doubled the memory the app
 kept using afterwards (300 MB instead of 145 MB).

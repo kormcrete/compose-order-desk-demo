@@ -9,7 +9,8 @@
 # Usage, from the repository root after `./gradlew :desktopApp:createReleaseDistributable`:
 #   desktopApp/aot/train-and-package.sh <JDK 25 home> <output dir> [<version>]
 # Into the output dir, as kormcrete-order-desk-compose-…: macos-<arch>.dmg (an ad-hoc signed app, /Applications while
-# it trains) · linux-x64.deb (/opt) · windows-x64.zip (a folder that runs from anywhere).
+# it trains) · linux-x64.deb (/opt) · windows-x64.zip (a folder that runs from anywhere; the cache needs an unzip that
+# keeps the stored times, see the README).
 set -euo pipefail
 
 jdk=$1
@@ -87,19 +88,22 @@ case "$(uname -s)" in
     rm -rf "$out/plain"
     "$jdk/bin/jpackage" --type deb --app-image "$image" --name "$name" --app-version "$version" --vendor Kormcrete \
       --description "Order Desk in Compose Multiplatform" --license-file LICENSE \
-      --linux-package-name "$asset" --linux-shortcut --linux-menu-group Office --dest "$out/plain"
+      --linux-package-name "$asset" --dest "$out/plain"
     plain=$(ls "$out"/plain/*.deb)
-    $sudo apt-get install -y -qq "$plain" > /dev/null
+    $sudo apt-get install -y "$plain"
     train
     echo "== adding the cache to the .deb"
     rm -rf "$out/deb"
     dpkg-deb -R "$plain" "$out/deb"
     cp "$appdir/orderdesk.aot" "$out/deb$appdir/"
     cp "$appdir/$name.cfg" "$out/deb$appdir/"
+    [ -f "$out/deb/opt/$asset/lib/$name.png" ] || { echo "No icon for the menu entry." >&2; exit 1; }
+    mkdir -p "$out/deb/usr/share/applications"
+    cp "$root/packaging/linux/$asset.desktop" "$out/deb/usr/share/applications/"
     file="$out/$asset-linux-x64.deb"
     dpkg-deb -b -Zxz -z9 --root-owner-group "$out/deb" "$file" > /dev/null
     $sudo dpkg -r "$asset" > /dev/null
-    $sudo apt-get install -y -qq "$file" > /dev/null
+    $sudo apt-get install -y "$file"
     rm -rf "$out/deb" "$out/plain"
     ;;
   Darwin)
@@ -130,17 +134,16 @@ case "$(uname -s)" in
     echo "== building the .zip"
     file="$out/$asset-windows-x64.zip"
     rm -f "$file"
-    # 7-Zip also stores the exact UTC times: a zip's plain times are local, and would shift in another time zone.
-    (cd "$install/.." && 7z a -tzip -bd -mx=9 "$file" "$name" > /dev/null)
+    # With the exact UTC times too: a zip's plain times are local, and would shift in another time zone.
+    (cd "$install/.." && 7z a -tzip -bd -mx=9 -mtc=on "$file" "$name" > /dev/null)
     rm -rf "$install"
-    # Unzipped as a user would, by Explorer's own code, and in another time zone than the machine that built it.
+    # Unzipped in another time zone than the machine that built it, and somewhere else than it trained.
+    timezone=$(tzutil //g)
     tzutil //s "W. Europe Standard Time"
-    unzipped=$(cygpath -w "$out/unzipped")
+    trap 'tzutil //s "$timezone"' EXIT
     rm -rf "$out/unzipped"
-    mkdir -p "$out/unzipped"
-    powershell -NoProfile -Command "\$s = New-Object -ComObject Shell.Application; \$s.NameSpace('$unzipped').CopyHere(\$s.NameSpace('$(cygpath -w "$file")').Items(), 0x14)"
+    7z x -bd -o"$out/unzipped" "$file" > /dev/null
     install="$out/unzipped/$name"; appdir="$install/app"; launcher="$install/$name.exe"
-    for _ in $(seq 1 120); do [ -f "$appdir/orderdesk.aot" ] && [ -f "$launcher" ] && break; sleep 1; done
     ;;
 esac
 

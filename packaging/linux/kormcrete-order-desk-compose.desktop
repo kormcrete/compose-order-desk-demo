@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Kormcrete Order Desk Compose
+Comment=Order Desk in Compose Multiplatform
+Exec="/opt/kormcrete-order-desk-compose/bin/Kormcrete Order Desk Compose"
+Icon=/opt/kormcrete-order-desk-compose/lib/Kormcrete Order Desk Compose.png
+Categories=Office;
+Terminal=false
