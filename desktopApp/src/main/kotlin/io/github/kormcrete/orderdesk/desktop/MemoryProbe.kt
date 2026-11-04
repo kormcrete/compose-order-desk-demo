@@ -63,7 +63,12 @@ object MemoryProbe {
         val mb = 1024 * 1024
         appendLine("java ${System.getProperty("java.version")} (${System.getProperty("java.vm.name")}) on ${System.getProperty("os.name")}")
         appendLine("jvm args: ${ManagementFactory.getRuntimeMXBean().inputArguments.joinToString(" ")}")
-        appendLine("first frame + walk-through started after: ${startupMillis} ms uptime")
+        val splash = Splash.firstFrameNanos
+        if (splash != 0L) {
+            val uptime = ManagementFactory.getRuntimeMXBean().uptime
+            appendLine("splash on screen after: ${uptime - (System.nanoTime() - splash) / 1_000_000} ms uptime")
+        }
+        appendLine("window with the first screen after: ${startupMillis} ms uptime")
         appendLine("heap used: ${(rt.totalMemory() - rt.freeMemory()) / mb} MB, committed: ${rt.totalMemory() / mb} MB, max: ${rt.maxMemory() / mb} MB")
         appendLine("non-heap used: ${mem.nonHeapMemoryUsage.used / mb} MB, committed: ${mem.nonHeapMemoryUsage.committed / mb} MB")
         appendLine("loaded classes: ${ManagementFactory.getClassLoadingMXBean().loadedClassCount}, threads: ${ManagementFactory.getThreadMXBean().threadCount}")

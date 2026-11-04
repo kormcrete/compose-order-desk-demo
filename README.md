@@ -38,6 +38,36 @@ each start begins with the same data. The same app as a plain Swing application:
 emulator, a simulator and the three desktop systems. The macOS and Windows machines have small screens (about 1000
 pixels wide), so their windows show the compact desktop layout; Linux shows it at 1280.</sub>
 
+## Download
+
+Try it without building anything. The Mac, Windows and Linux downloads include their own Java; the Java zip runs on your
+own Java 17 or newer, on any computer.
+
+| Your computer | Download |
+|---|---|
+| Mac with Apple Silicon (M1 and later) | [kormcrete-order-desk-compose-macos-arm64.dmg](https://github.com/kormcrete/compose-order-desk-demo/releases/latest/download/kormcrete-order-desk-compose-macos-arm64.dmg) |
+| Mac with Intel | [kormcrete-order-desk-compose-macos-x64.dmg](https://github.com/kormcrete/compose-order-desk-demo/releases/latest/download/kormcrete-order-desk-compose-macos-x64.dmg) |
+| Windows (x64) | [kormcrete-order-desk-compose-windows-x64.zip](https://github.com/kormcrete/compose-order-desk-demo/releases/latest/download/kormcrete-order-desk-compose-windows-x64.zip) |
+| Linux (x64), Debian or Ubuntu | [kormcrete-order-desk-compose-linux-x64.deb](https://github.com/kormcrete/compose-order-desk-demo/releases/latest/download/kormcrete-order-desk-compose-linux-x64.deb) |
+| Any computer with Java 17 or newer | [kormcrete-order-desk-compose-java.zip](https://github.com/kormcrete/compose-order-desk-demo/releases/latest/download/kormcrete-order-desk-compose-java.zip) |
+
+The downloads are not signed yet, so the first launch takes a few extra clicks:
+
+- **macOS:** open the `.dmg` and drag **Kormcrete Order Desk Compose** to Applications. The app is not notarized by Apple
+  yet, so macOS refuses to open it ("Apple could not verify…"). Clear the download mark once, in Terminal, then open it:
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/Kormcrete Order Desk Compose.app"
+  ```
+
+- **Windows:** unzip, open the **Kormcrete Order Desk Compose** folder and run **Kormcrete Order Desk Compose.exe**. If
+  SmartScreen stops it, click **More info → Run anyway**.
+- **Linux:** `sudo apt install ./kormcrete-order-desk-compose-linux-x64.deb`, then start it from the applications menu.
+- **Java zip:** unzip, then run `order-desk` in the **Kormcrete Order Desk Compose** folder (`order-desk.cmd` on Windows).
+  It uses `JAVA_HOME` when set, else the `java` on your PATH.
+
+The downloads are for the desktop; the phone and tablet apps are built from source, see [Run it](#run-it).
+
 ## One UI, two layouts
 
 The width of the window decides the layout, not the platform:
@@ -91,15 +121,18 @@ downloads them.
 
 ## Installers
 
+The downloads come from `desktopApp/aot/train-and-package.sh`, which adds an AOT cache for a faster start (see
+[Desktop runtime](#desktop-runtime)), and from the `release` workflow, which starts each package the way a user gets it.
+A `vX.Y.Z` tag publishes them.
+
 ```bash
-./gradlew :desktopApp:packageReleaseDmg   # macOS
-./gradlew :desktopApp:packageReleaseMsi   # Windows
-./gradlew :desktopApp:packageReleaseDeb   # Linux
-./gradlew :androidApp:assembleRelease     # Android, signed with the debug key
+./gradlew :desktopApp:createReleaseDistributable
+desktopApp/aot/train-and-package.sh <JDK 25 home> dist   # the .dmg, the .deb or the Windows .zip of this computer
+./gradlew :desktopApp:packageJavaZip                     # the Java zip
+./gradlew :androidApp:assembleRelease                    # Android, signed with the debug key
 ```
 
-`desktopApp/aot/train-and-package.sh` builds the .deb or .dmg with an AOT cache for a faster start (see
-[Desktop runtime](#desktop-runtime)).
+Gradle has to run on a JDK of the computer's own architecture: it picks Skia's native library by it.
 
 ## Build and test
 
@@ -110,7 +143,8 @@ downloads them.
 ```
 
 CI builds Android, iOS and the desktop app on Linux, macOS and Windows, runs the tests, renders the screens, measures
-the packaged desktop app and takes the screenshots above.
+the packaged desktop app and takes the screenshots above. `InteractionTest` clicks through the screens headless, on both
+layouts.
 
 ## Project layout
 
@@ -128,7 +162,7 @@ comes from `lagoon-compose`: `LagoonTheme`, its tokens and components.
 ## Desktop runtime
 
 A Java desktop app does not have to be heavy. The desktop app ships its own JDK 25 runtime, trimmed to the modules it
-uses, shrunk with ProGuard, and starts with:
+uses, shrunk with ProGuard into one jar, and starts with:
 
 | Option | Why |
 |---|---|
@@ -138,23 +172,30 @@ uses, shrunk with ProGuard, and starts with:
 | `-XX:+UseStringDeduplication` | Repeated strings stored once |
 | `-XX:TieredStopAtLevel=1`, `-XX:ReservedCodeCacheSize=48m` | Quick JIT only: less compiler memory and fewer threads, plenty for UI code |
 | `-Xss512k` | Smaller thread stacks |
+| `-XX:-UsePerfData` | No statistics file for monitoring tools |
 
 An AOT cache (JDK 25) makes the start faster: classes are loaded and linked once, in a training run, and stored next
 to the jars. The JVM uses a cache only with the very same jars, so `desktopApp/aot/train-and-package.sh` trains the
 app where its installer puts it, on the files the installer installs, and adds the cache to that package.
 
-With `-Dorderdesk.probe=<file>` the app walks through its main screens, then writes what it uses and quits. CI runs it
-on the installed app with its AOT cache:
+The splash, where the kormcrete k builds itself as in the Swing demo, is drawn by Compose in a small window of its own.
+The JVM's own splash screen would show sooner, but on macOS, painting on it frame by frame doubled the memory the app
+kept using afterwards (300 MB instead of 145 MB).
 
-| | Classes from the AOT cache | Start to first screen | Memory as the OS shows it | Java heap in use |
-|---|---|---|---|---|
-| Linux | 6,525 of 6,566 | 0.28 s (1.3 s without) | 220 MB resident | 8 MB |
-| macOS | 6,321 of 6,339 | 0.68 s (1.9 s without) | 221 MB resident | 8 MB |
-| Windows | 6,339 of 6,367 | 0.42 s (1.2 s without) | 173 MB working set | 10 MB |
+With `-Dorderdesk.probe=<file>` the app walks through its main screens, then writes what it uses and quits. The
+`release` workflow runs it on every package, and fails if the app does not finish or does not use its cache. On a
+Mac with Apple Silicon, from the `.dmg`, installed:
 
-Measured on GitHub's CI machines, with software rendering on Linux. Of the resident memory, about 100 MB are shared,
-file-backed pages (the runtime's modules and Skia's native library) that the system can reclaim.
+| | |
+|---|---|
+| Download | 43 MB |
+| Splash on screen | 0.75 s |
+| Window with the first screen, after the splash's 1.85 s | 2.7 s |
+| Memory, Activity Monitor's figure, idle | 139 MB |
+| Classes from the AOT cache | 6,616 of 6,633 |
+| Java heap in use | 8 MB |
 
 ## License
 
-Apache License 2.0. The Lagoon theme bundles the Inter font under the SIL Open Font License.
+Apache License 2.0. The Lagoon theme bundles the Inter font under the SIL Open Font License. What the downloads contain
+is listed in [NOTICE](NOTICE).

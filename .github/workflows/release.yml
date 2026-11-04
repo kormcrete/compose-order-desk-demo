@@ -1,0 +1,118 @@
+name: release
+
+# The downloads: Order Desk in Compose for macOS (.dmg, Apple Silicon and Intel), Windows (.zip) and Linux (.deb), each
+# with its own JDK 25 runtime, shrunk and with an AOT cache trained on that package, and a Java .zip (for your own Java
+# 17+). Every run starts each package the way a user gets it and checks that the app walks through its screens and uses
+# the cache; a vX.Y.Z tag also publishes a GitHub Release. Pull requests that touch the packaging run the checks.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'packaging/**'
+      - 'desktopApp/**'
+      - '.github/scripts/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS, Apple Silicon
+            os: macos-latest
+          - name: macOS, Intel
+            # The cache has to be trained on the architecture it runs on.
+            os: macos-15-intel
+          - name: Windows
+            os: windows-latest
+          - name: Linux and the Java zip
+            os: ubuntu-latest
+            tasks: ':shared:jvmTest :desktopApp:test :desktopApp:packageJavaZip'
+    defaults:
+      run:
+        shell: bash
+        working-directory: compose-order-desk-demo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: compose-order-desk-demo
+      - name: Check out the Lagoon theme
+        uses: actions/checkout@v7
+        with:
+          repository: kormcrete/lagoon-theme
+          path: lagoon-theme
+      # 17 builds; 25 is the runtime the app ships with (JAVA_HOME_25_*).
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: |
+            25
+            17
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Version
+        run: .github/scripts/release-version.sh >> "$GITHUB_ENV"
+      - name: Build
+        run: ./gradlew ${{ matrix.tasks }} :desktopApp:createReleaseDistributable -Porderdesk.version="$VERSION" --console=plain --stacktrace
+      - name: Virtual display
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y -qq xvfb > /dev/null
+      - name: Package and check
+        run: |
+          jdk="${JAVA_HOME_25_X64:-${JAVA_HOME_25_ARM64:-$JAVA_HOME_25_arm64}}"
+          desktopApp/aot/train-and-package.sh "$jdk" dist "$VERSION"
+          report=$(cat dist/aot.txt dist/memory-aot.txt | grep -v 'jvm args' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          echo "::notice title=Download (${{ matrix.name }})::$report"
+      - name: Check the Java zip
+        if: runner.os == 'Linux'
+        run: |
+          cp desktopApp/build/dist/*.zip dist/
+          unzip -q dist/kormcrete-order-desk-compose-java.zip -d java-zip
+          for java in "$JAVA_HOME_17_X64" "$JAVA_HOME_25_X64"; do
+            rm -f "$PWD/java-report.txt"
+            JAVA_HOME="$java" JAVA_TOOL_OPTIONS="-Dorderdesk.probe=$PWD/java-report.txt" \
+              timeout 120 xvfb-run -a -s "-screen 0 1920x1080x24" "java-zip/Kormcrete Order Desk Compose/order-desk"
+            cat java-report.txt
+            grep -q '^splash on screen' java-report.txt
+          done
+      - name: Keep the downloads
+        uses: actions/upload-artifact@v7
+        with:
+          name: downloads-${{ matrix.os }}
+          path: |
+            compose-order-desk-demo/dist/*.dmg
+            compose-order-desk-demo/dist/*.deb
+            compose-order-desk-demo/dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [download]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: downloads-*
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # the notes: what is new in this tag (packaging/whats-new/<tag>.md, when there is one), then the standing text
+        run: |
+          NEW="packaging/whats-new/$GITHUB_REF_NAME.md"
+          { if [ -f "$NEW" ]; then cat "$NEW"; echo; fi; cat packaging/release-notes.md; } > release-notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Kormcrete Order Desk Compose ${GITHUB_REF_NAME#v}" \
+            --notes-file release-notes.md

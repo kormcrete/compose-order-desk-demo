@@ -1,0 +1,12 @@
+compose-order-desk-demo
+Copyright 2026 kormcrete and the compose-order-desk-demo contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The downloads (kormcrete-order-desk-compose-*) also contain:
+- The Lagoon theme for Compose (https://github.com/kormcrete/lagoon-theme), Apache License 2.0.
+- The Inter font, under the SIL Open Font License 1.1 (see INTER-OFL.txt, next to this file in the downloads).
+- Compose Multiplatform, Skiko, Skia, Kotlin and AndroidX libraries, under their own open source licenses,
+  mostly the Apache License 2.0.
+- On macOS, Windows and Linux: a runtime linked from Eclipse Temurin (OpenJDK) 25, licensed under the GNU General Public
+  License, version 2, with the Classpath Exception; its license files are in the bundled runtime's legal folder.

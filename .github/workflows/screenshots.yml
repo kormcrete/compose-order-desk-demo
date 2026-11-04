@@ -59,9 +59,9 @@ jobs:
           out="$PWD/shots"
           mkdir -p "$out"
           case "$RUNNER_OS" in
-            macOS)   launcher="$app/Contents/MacOS/Order Desk"; os=macos ;;
-            Windows) launcher="$app/Order Desk.exe"; os=windows; out=$(cygpath -m "$out") ;;
-            *)       launcher="$app/bin/Order Desk"; os=linux
+            macOS)   launcher="$app/Contents/MacOS/Kormcrete Order Desk Compose"; os=macos ;;
+            Windows) launcher="$app/Kormcrete Order Desk Compose.exe"; os=windows; out=$(cygpath -m "$out") ;;
+            *)       launcher="$app/bin/Kormcrete Order Desk Compose"; os=linux
                      # Openbox: a window manager, so the Linux window has a title bar like on a desktop.
                      sudo apt-get install -y -qq xvfb openbox > /dev/null ;;
           esac

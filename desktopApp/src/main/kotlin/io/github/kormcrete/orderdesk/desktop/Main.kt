@@ -1,6 +1,9 @@
 package io.github.kormcrete.orderdesk.desktop
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyShortcut
@@ -21,10 +24,13 @@ import java.awt.GraphicsEnvironment
 private val isMac = System.getProperty("os.name").lowercase().startsWith("mac")
 
 fun main() = application {
+    // The window shows when the k has built itself; behind the splash, the app gets ready.
+    var splash by remember { mutableStateOf(Splash.wanted) }
+    if (splash) Splash.Window(onDone = { splash = false })
     // -Dorderdesk.scene=new-order opens a prepared scene (screenshots, demos).
     val state = remember { OrderDeskState(Seed.store()).also { Scenes.show(it, System.getProperty("orderdesk.scene")) } }
     val window = rememberWindowState(size = startSize(), position = WindowPosition(Alignment.Center))
-    Window(onCloseRequest = ::exitApplication, title = "Order Desk", state = window) {
+    Window(onCloseRequest = ::exitApplication, title = "Order Desk", state = window, visible = !splash) {
         this.window.minimumSize = Dimension(400, 560)
         // On macOS this is the system menu bar; on Windows and Linux it sits in the window.
         MenuBar {
@@ -34,8 +40,10 @@ fun main() = application {
             }
         }
         App(state = state)
-        MemoryProbe.startIfRequested(state, ::exitApplication)
-        WindowShot.takeIfRequested(this.window, ::exitApplication)
+        if (!splash) {
+            MemoryProbe.startIfRequested(state, ::exitApplication)
+            WindowShot.takeIfRequested(this.window, ::exitApplication)
+        }
     }
 }
 

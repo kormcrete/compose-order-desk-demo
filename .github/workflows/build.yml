@@ -33,7 +33,7 @@ jobs:
         include:
           - name: Linux · Android, desktop
             os: ubuntu-latest
-            tasks: ':shared:jvmTest :androidApp:assembleRelease :desktopApp:createReleaseDistributable -Pscreenshots=../screenshots'
+            tasks: ':shared:jvmTest :desktopApp:test :androidApp:assembleRelease :desktopApp:createReleaseDistributable -Pscreenshots=../screenshots'
           - name: macOS · iOS, desktop
             os: macos-latest
             tasks: ':shared:iosSimulatorArm64Test :shared:linkReleaseFrameworkIosArm64 :desktopApp:createReleaseDistributable'
@@ -71,9 +71,9 @@ jobs:
           set -o pipefail
           app=$(find desktopApp/build/compose/binaries/main-release/app -maxdepth 1 -mindepth 1 | head -1)
           case "$RUNNER_OS" in
-            macOS)   launcher="$app/Contents/MacOS/Order Desk" ;;
-            Windows) launcher="$app/Order Desk.exe" ;;
-            *)       launcher="$app/bin/Order Desk" ;;
+            macOS)   launcher="$app/Contents/MacOS/Kormcrete Order Desk Compose" ;;
+            Windows) launcher="$app/Kormcrete Order Desk Compose.exe" ;;
+            *)       launcher="$app/bin/Kormcrete Order Desk Compose" ;;
           esac
           du -sh "$app" | sed 's/^/packaged app size: /' | tee size.txt
           probe="$PWD/memory.txt"
