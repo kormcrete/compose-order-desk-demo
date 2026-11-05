@@ -24,8 +24,12 @@ import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 
 private val isMac = System.getProperty("os.name").lowercase().startsWith("mac")
+private val isLinux = System.getProperty("os.name").lowercase().startsWith("linux")
 
-fun main() = application {
+// On Linux, exiting right after the last window closes can deadlock: AWT's X thread handles an X error holding the
+// X lock and waits for the JVM's exit safepoint, while libGLX's destructor in exit() waits for that lock. Without
+// exitProcess the JVM ends on its own a moment later, when AWT has shut down; the window is gone at once either way.
+fun main() = application(exitProcessOnExit = !isLinux) {
     // The window shows when the k has built itself; behind the splash, the app gets ready.
     var splash by remember { mutableStateOf(Splash.wanted) }
     if (splash) Splash.Window(onDone = { splash = false })
