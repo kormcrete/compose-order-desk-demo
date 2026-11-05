@@ -161,8 +161,8 @@ comes from `lagoon-compose`: `LagoonTheme`, its tokens and components.
 
 ## Desktop runtime
 
-A Java desktop app does not have to be heavy. The desktop app ships its own JDK 25 runtime, trimmed to the modules it
-uses, shrunk with ProGuard into one jar, and starts with:
+The desktop app ships its own JDK 25 runtime, trimmed to the modules it uses, shrunk with ProGuard into one jar, and
+starts with:
 
 | Option | Why |
 |---|---|
@@ -187,17 +187,17 @@ The JVM's own splash screen would show sooner, but on macOS, painting on it fram
 kept using afterwards (300 MB instead of 145 MB).
 
 With `-Dorderdesk.probe=<file>` the app walks through its main screens, then writes what it uses and quits. The
-`release` workflow runs it on every package, and fails if the app does not finish or does not use its cache. On a
-Mac with Apple Silicon, from the `.dmg`, installed:
+`release` workflow runs it on every package, and fails if the app does not finish, does not quit or does not use its
+cache. On a Mac with Apple Silicon, from the `.dmg`, installed:
 
 | | |
 |---|---|
 | Download | 43 MB |
-| Splash on screen | 0.75 s |
+| Splash on screen | 0.74 s |
 | Window with the first screen, after the splash's 1.85 s | 2.7 s |
-| Memory, Activity Monitor's figure, idle | 139 MB |
-| Classes from the AOT cache | 6,616 of 6,633 |
-| Java heap in use | 8 MB |
+| Memory, Activity Monitor's figure, idle | about 160 MB |
+| Classes from the AOT cache | 6,460 of about 6,670 |
+| Java heap in use | 10 MB |
 
 ## License
 
