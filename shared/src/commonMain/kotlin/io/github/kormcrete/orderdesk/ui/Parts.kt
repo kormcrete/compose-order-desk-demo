@@ -372,6 +372,29 @@ fun ConfirmCancel(order: Order, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
+/** What the app is; opened from the desktop's Help menu. */
+@Composable
+fun AboutDialog(onDismiss: () -> Unit) {
+    Overlay(onDismiss) {
+        LagoonCard(Modifier.width(400.dp), padding = PaddingValues(22.dp)) {
+            Text("About Order Desk", style = Lagoon.type.headline.copy(fontSize = Lagoon.metrics.headlineSize * 0.8f))
+            Text(
+                "A small, fictional order-entry app: the demo of the Lagoon theme for Compose.",
+                Modifier.padding(top = 8.dp),
+                style = Lagoon.type.body,
+                color = Lagoon.colors.inkMuted,
+            )
+            Text(
+                "Built with Kotlin, Compose Multiplatform and the Lagoon theme. All customers, products and orders are invented.",
+                Modifier.padding(top = 8.dp, bottom = 20.dp),
+                style = Lagoon.type.body,
+                color = Lagoon.colors.inkMuted,
+            )
+            LagoonButton("OK", onDismiss, Modifier.align(Alignment.End))
+        }
+    }
+}
+
 /** The plain-text receipt, monospaced. */
 @Composable
 fun ReceiptView(text: String, onDismiss: () -> Unit) {

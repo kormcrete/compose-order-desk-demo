@@ -61,6 +61,23 @@ class InteractionTest {
         onNodeWithText("1 products · 1 items").assertExists()
     }
 
+    private fun ComposeUiTest.aboutOpensAndCloses(state: OrderDeskState) {
+        onAllNodesWithText("About Order Desk").assertCountEquals(0)
+        state.showingAbout = true
+        waitForIdle()
+        onNodeWithText("About Order Desk").assertIsDisplayed()
+        onNodeWithText("All customers, products and orders are invented", substring = true).assertIsDisplayed()
+        onNodeWithText("OK").performClick()
+        waitForIdle()
+        onAllNodesWithText("About Order Desk").assertCountEquals(0)
+    }
+
+    @Test
+    fun desktopAboutOpensAndCloses() = desktop { aboutOpensAndCloses(it) }
+
+    @Test
+    fun phoneLayoutAboutOpensAndCloses() = phone { aboutOpensAndCloses(it) }
+
     @Test
     fun desktopSteppersChangeTheQuantityEverywhere() = desktop { state ->
         state.startDraft(state.store.customers.first())

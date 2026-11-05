@@ -206,4 +206,5 @@ class OrderDeskState(val store: Store) {
 
     // ---- desktop dialogs
     var pickingCustomer by mutableStateOf(false)
+    var showingAbout by mutableStateOf(false)
 }

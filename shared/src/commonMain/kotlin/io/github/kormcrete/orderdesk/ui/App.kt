@@ -45,6 +45,7 @@ fun App(
 
                 state.confirmCancel?.let { order -> ConfirmCancel(order, { state.cancel(order) }, { state.confirmCancel = null }) }
                 state.receipt?.let { order -> ReceiptView(ReceiptText.of(order), { state.receipt = null }) }
+                if (state.showingAbout) AboutDialog { state.showingAbout = false }
                 state.message?.let { text ->
                     MessageBar(text, { state.message = null }, Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp))
                     LaunchedEffect(text) {
@@ -62,6 +63,7 @@ private fun shortcut(state: OrderDeskState, event: KeyEvent): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     return when {
         event.key == Key.Escape -> when {
+            state.showingAbout -> { state.showingAbout = false; true }
             state.receipt != null -> { state.receipt = null; true }
             state.confirmCancel != null -> { state.confirmCancel = null; true }
             state.checkout != null && state.backStack.last() != Screen.Checkout -> { state.checkout = null; true }

@@ -1,5 +1,6 @@
 package io.github.kormcrete.orderdesk.desktop
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,6 +19,7 @@ import io.github.kormcrete.orderdesk.model.Seed
 import io.github.kormcrete.orderdesk.ui.App
 import io.github.kormcrete.orderdesk.ui.OrderDeskState
 import io.github.kormcrete.orderdesk.ui.Scenes
+import java.awt.Desktop
 import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 
@@ -29,6 +31,8 @@ fun main() = application {
     if (splash) Splash.Window(onDone = { splash = false })
     // -Dorderdesk.scene=new-order opens a prepared scene (screenshots, demos).
     val state = remember { OrderDeskState(Seed.store()).also { Scenes.show(it, System.getProperty("orderdesk.scene")) } }
+    // The About item macOS puts in the application menu shows the same dialog, not the JVM's default.
+    LaunchedEffect(Unit) { if (isMac) Desktop.getDesktop().setAboutHandler { state.showingAbout = true } }
     val window = rememberWindowState(size = startSize(), position = WindowPosition(Alignment.Center))
     Window(onCloseRequest = ::exitApplication, title = "Order Desk", state = window, visible = !splash) {
         this.window.minimumSize = Dimension(400, 560)
@@ -37,6 +41,9 @@ fun main() = application {
             Menu("Order") {
                 Item("New order", shortcut = shortcut(Key.N), onClick = { state.pickingCustomer = true })
                 Item("Orders", shortcut = shortcut(Key.One), onClick = { state.activeDraft = null })
+            }
+            Menu("Help") {
+                Item("About Order Desk", onClick = { state.showingAbout = true })
             }
         }
         App(state = state)
