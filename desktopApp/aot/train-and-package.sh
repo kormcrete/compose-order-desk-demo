@@ -44,8 +44,16 @@ case "$(uname -s)" in
     run() { limit 120 "$@"; } ;;
 esac
 
-# Runs the app through its main screens with JAVA_TOOL_OPTIONS (quoted: paths may have spaces).
-probe() { JAVA_TOOL_OPTIONS="$1" run "$launcher" || true; }
+# Runs the app through its main screens with JAVA_TOOL_OPTIONS (quoted: paths may have spaces). An app that has not quit
+# by the time limit fails the build, even with its report written: 124 from timeout, 142 from perl's alarm. The checks
+# after a run judge any other exit code by what the run left behind.
+probe() {
+  local code=0
+  JAVA_TOOL_OPTIONS="$1" run "$launcher" || code=$?
+  case $code in
+    124 | 142) echo "The app did not quit within the time limit." >&2; exit 1 ;;
+  esac
+}
 
 # The jars' final form: nothing may change them after training.
 prepare() {
