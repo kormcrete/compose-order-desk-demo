@@ -1,5 +1,9 @@
 # Order Desk in Compose
 
+[![build](https://github.com/kormcrete/compose-order-desk-demo/actions/workflows/build.yml/badge.svg)](https://github.com/kormcrete/compose-order-desk-demo/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/kormcrete/compose-order-desk-demo)](https://github.com/kormcrete/compose-order-desk-demo/releases/latest)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 Order Desk, a small order entry app where a shop employee takes an order for a customer, written once in
 [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/) and running on Android, iPhone and iPad,
 macOS, Windows and Linux. It is the demo of the [Lagoon theme](https://github.com/kormcrete/lagoon-theme)
